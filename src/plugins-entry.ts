@@ -9,4 +9,5 @@ export default {
   "dropdown-searchable": () => import(/* webpackChunkName: "plugin-dropdown-searchable" */ "src/plugins/dropdown-searchable"),
   statistics: () => import(/* webpackChunkName: "plugin-statistics" */ "src/plugins/statistics"),
   "historical-version": () => import(/* webpackChunkName: "plugin-historical-version" */ "src/plugins/historical-version"),
+  "costume-crud": () => import(/* webpackChunkName: "plugin-costume-crud" */ "src/plugins/costume-crud"),
 } as const;

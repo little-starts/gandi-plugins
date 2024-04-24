@@ -9,4 +9,5 @@ export default {
   "dropdown-searchable": () => import(/* webpackChunkName: "plugin-dropdown-searchable-manifest" */ "src/plugins/dropdown-searchable/manifest"),
   statistics: () => import(/* webpackChunkName: "plugin-statistics-manifest" */ "src/plugins/statistics/manifest"),
   "historical-version": () => import(/* webpackChunkName: "plugin-historical-version-manifest" */ "src/plugins/historical-version/manifest"),
+  "costume-crud": () => import(/* webpackChunkName: "plugin-costume-crud-manifest" */ "src/plugins/costume-crud/manifest"),
 } as const;
