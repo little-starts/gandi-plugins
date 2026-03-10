@@ -285,7 +285,11 @@
   "plugins.cleanPro.cleanHeadlessBlocks": "Clean Headless Blocks",
   "plugins.cleanPro.docs.title": "Plugin Doc",
   "plugins.witcatInfiniteCanvas.title": "Infinite Canvas by Witcat",
-  "plugins.witcatInfiniteCanvas.open": "Enable Infinite Canvas"
+  "plugins.witcatInfiniteCanvas.open": "Enable Infinite Canvas",
+  "plugins.witcatInfiniteCanvas.originalImageUpload": "Original Image Upload",
+  "plugins.witcatInfiniteCanvas.unsupportedFileExtension": "Unsupported file extension",
+  "plugins.witcatInfiniteCanvas.fileReaderError": "File reader error",
+  "plugins.witcatInfiniteCanvas.imageLoadError": "Image load error",
   "plugins.findDefinition.title": "find definition of custom block",
   "plugins.findDefinition.description": "Right-click on a custom block in the code area and select【Jump To Definition】to jump to the definition location of that custom block.",
   "plugins.findDefinition.goToDefinition": "Jump To Definition",
