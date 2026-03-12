@@ -263,5 +263,11 @@
   "plugins.mobileCodeBatchSelect.zoomStage": "Zoom en el Escenario",
   "plugins.mobileCodeBatchSelect.zoomStage.description": "Pellizca en un área vacía en el espacio de trabajo del script para acercar o alejar.",
   "plugins.mobileCodeBatchSelect.boxSelect": "Selección de Bloques en Caja",
-  "plugins.mobileCodeBatchSelect.boxSelect.description": "Toca dos veces y mantén presionado con uno o dos dedos en un área vacía, luego arrastra para seleccionar varios bloques. Toca dos veces en un área vacía para deseleccionar."
+  "plugins.mobileCodeBatchSelect.boxSelect.description": "Toca dos veces y mantén presionado con uno o dos dedos en un área vacía, luego arrastra para seleccionar varios bloques. Toca dos veces en un área vacía para deseleccionar.",
+  "plugins.witcatInfiniteCanvas.open": "Habilitar Lienzo Infinito",
+  "plugins.witcatInfiniteCanvas.originalImageUpload": "Subir imagen original",
+  "plugins.witcatInfiniteCanvas.unsupportedFileExtension": "Extensión de archivo no admitida",
+  "plugins.witcatInfiniteCanvas.fileReaderError": "Error de lectura de archivo",
+  "plugins.witcatInfiniteCanvas.imageLoadError": "Error de carga de imagen",
+  "plugins.findDefinition.title": "buscar definición de bloque personalizado"
 }

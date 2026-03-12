@@ -263,5 +263,11 @@
   "plugins.mobileCodeBatchSelect.zoomStage": "Масштабирование сцены",
   "plugins.mobileCodeBatchSelect.zoomStage.description": "Сожмите два пальца на пустой области в рабочем пространстве, чтобы изменить масштаб.",
   "plugins.mobileCodeBatchSelect.boxSelect": "Выбор блоков рамкой",
-  "plugins.mobileCodeBatchSelect.boxSelect.description": "Дважды коснитесь и удерживайте одним или двумя пальцами на пустой области, затем переместите палец, чтобы выделить несколько блоков. Дважды коснитесь пустой области, чтобы снять выделение."
+  "plugins.mobileCodeBatchSelect.boxSelect.description": "Дважды коснитесь и удерживайте одним или двумя пальцами на пустой области, затем переместите палец, чтобы выделить несколько блоков. Дважды коснитесь пустой области, чтобы снять выделение.",
+  "plugins.witcatInfiniteCanvas.open": "Включить бесконечный холст",
+  "plugins.witcatInfiniteCanvas.originalImageUpload": "Загрузить оригинальное изображение",
+  "plugins.witcatInfiniteCanvas.unsupportedFileExtension": "Неподдерживаемое расширение файла",
+  "plugins.witcatInfiniteCanvas.fileReaderError": "Ошибка чтения файла",
+  "plugins.witcatInfiniteCanvas.imageLoadError": "Ошибка загрузки изображения",
+  "plugins.findDefinition.title": "найти определение пользовательского блока"
 }

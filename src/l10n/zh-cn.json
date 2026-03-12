@@ -286,7 +286,11 @@
   "plugins.cleanPro.cleanHeadlessBlocks": "清理无头块",
   "plugins.cleanPro.docs.title": "插件文档",
   "plugins.witcatInfiniteCanvas.title": "白猫的无限画布",
-  "plugins.witcatInfiniteCanvas.open": "启用无限画布"
+  "plugins.witcatInfiniteCanvas.open": "启用无限画布",
+  "plugins.witcatInfiniteCanvas.originalImageUpload": "原图上传",
+  "plugins.witcatInfiniteCanvas.unsupportedFileExtension": "不支持的文件扩展名",
+  "plugins.witcatInfiniteCanvas.fileReaderError": "文件读取错误",
+  "plugins.witcatInfiniteCanvas.imageLoadError": "图片加载错误",
   "plugins.findDefinition.title": "查找自定义块的定义位置",
   "plugins.findDefinition.description": "在代码区右键单击自定义块，选择【跳转到定义】即可跳转到该自定义块的定义位置。",
   "plugins.findDefinition.goToDefinition": "跳转到定义",
