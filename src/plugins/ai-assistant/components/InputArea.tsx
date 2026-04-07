@@ -5,6 +5,24 @@ import { Attachment } from "../types";
 import { AttachmentPreviewModal } from "./AttachmentPreviewModal";
 import { getAttachmentDisplayName } from "../attachmentUtils";
 
+const SendIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <path
+      d="M2.2 13.1 13.7 8 2.2 2.9l1.4 4.1 5.1 1-5.1 1-1.4 4.1Z"
+      fill="currentColor"
+      stroke="currentColor"
+      strokeLinejoin="round"
+      strokeWidth="0.5"
+    />
+  </svg>
+);
+
+const StopIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+    <rect x="3" y="3" width="8" height="8" rx="2" fill="currentColor" />
+  </svg>
+);
+
 interface InputAreaProps {
   inputText: string;
   setInputText: (text: string) => void;
@@ -73,7 +91,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
         <div className={styles.attachments}>
           {attachments.map((attachment) => (
             <div key={attachment.id} className={styles.attachmentItem}>
-              <span>
+              <span className={styles.attachmentKind}>
                 {attachment.kind === "workspace-ucf-range"
                   ? "片段"
                   : attachment.kind === "workspace-ucf"
@@ -102,7 +120,11 @@ export const InputArea: React.FC<InputAreaProps> = ({
                   {expandedId === attachment.id ? "收起" : "展开"}
                 </button>
               ) : null}
-              <button onClick={() => setAttachments((prev) => prev.filter((item) => item.id !== attachment.id))}>
+              <button
+                className={styles.attachmentRemoveButton}
+                onClick={() => setAttachments((prev) => prev.filter((item) => item.id !== attachment.id))}
+                title="移除附件"
+              >
                 x
               </button>
               {expandedId === attachment.id && attachment.preview ? (
@@ -113,30 +135,62 @@ export const InputArea: React.FC<InputAreaProps> = ({
         </div>
       ) : null}
       <div className={styles.inputBox}>
-        <button onClick={isSelectingBlocks ? onCancelBlockSelection : onStartBlockSelection} title="选择积木片段">
-          {isSelectingBlocks ? "取消选择" : "选择积木"}
-        </button>
-        <button onClick={() => fileInputRef.current?.click()} title="导入本地附件">
-          文件
-        </button>
-        <textarea
-          placeholder="输入消息..."
-          value={inputText}
-          onChange={(event) => setInputText(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && !event.shiftKey) {
-              event.preventDefault();
-              onSend();
-            }
-          }}
-        />
-        {isGenerating ? (
-          <button onClick={onStopGenerating} className={styles.stopButton}>
-            停止
-          </button>
-        ) : (
-          <button onClick={onSend}>发送</button>
-        )}
+        <div className={styles.inputTopRow}>
+          <div className={styles.inputTools}>
+            <button
+              type="button"
+              className={styles.toolButton}
+              onClick={isSelectingBlocks ? onCancelBlockSelection : onStartBlockSelection}
+              title="选择积木片段"
+            >
+              {isSelectingBlocks ? "取消框选" : "选择积木"}
+            </button>
+            <button
+              type="button"
+              className={styles.toolButton}
+              onClick={() => fileInputRef.current?.click()}
+              title="导入本地附件"
+            >
+              添加文件
+            </button>
+          </div>
+          <div className={styles.inputHint}>Enter 发送，Shift + Enter 换行</div>
+        </div>
+        <div className={styles.inputComposerRow}>
+          <textarea
+            className={styles.composerTextarea}
+            placeholder="输入消息、修改需求或粘贴上下文..."
+            value={inputText}
+            onChange={(event) => setInputText(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                onSend();
+              }
+            }}
+          />
+          {isGenerating ? (
+            <button
+              type="button"
+              onClick={onStopGenerating}
+              className={`${styles.primaryButton} ${styles.iconButton} ${styles.stopButton}`}
+              title="停止生成"
+              aria-label="停止生成"
+            >
+              <StopIcon />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onSend}
+              className={`${styles.primaryButton} ${styles.iconButton}`}
+              title="发送"
+              aria-label="发送"
+            >
+              <SendIcon />
+            </button>
+          )}
+        </div>
       </div>
       <input
         ref={fileInputRef}
