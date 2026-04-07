@@ -29,9 +29,7 @@ const DEFAULT_CONTAINER_INFO = {
 
 const AIAssistant: React.FC<PluginContext> = ({ vm, workspace }) => {
   const [visible, setVisible] = React.useState(false);
-  const [isAgentMenuOpen, setIsAgentMenuOpen] = React.useState(false);
   const containerRef = React.useRef(null);
-  const agentMenuRef = React.useRef<HTMLDivElement | null>(null);
 
   const [containerInfo, setContainerInfo] = useStorageInfo<ExpansionRect>(
     "AI_ASSISTANT_CONTAINER_INFO",
@@ -115,29 +113,6 @@ const AIAssistant: React.FC<PluginContext> = ({ vm, workspace }) => {
   const pluginsWrapper = document.querySelector(".plugins-wrapper");
 
   React.useEffect(() => {
-    if (!isAgentMenuOpen) return;
-
-    const handlePointerDown = (event: MouseEvent) => {
-      if (agentMenuRef.current?.contains(event.target as Node)) return;
-      setIsAgentMenuOpen(false);
-    };
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setIsAgentMenuOpen(false);
-      }
-    };
-
-    window.addEventListener("mousedown", handlePointerDown);
-    window.addEventListener("keydown", handleEscape);
-
-    return () => {
-      window.removeEventListener("mousedown", handlePointerDown);
-      window.removeEventListener("keydown", handleEscape);
-    };
-  }, [isAgentMenuOpen]);
-
-  React.useEffect(() => {
     const contextMenuRegistration = registerContextMenu(vm);
 
     const handleAddContext = (e: Event) => {
@@ -208,78 +183,36 @@ const AIAssistant: React.FC<PluginContext> = ({ vm, workspace }) => {
               {/* Right Panel */}
               <div className={styles.rightPanel}>
                 <div className={styles.header}>
-                  <div className={styles.headerMain}>
-                    <div className={styles.headerLeft}>
-                      {!isNarrow && (
-                        <button
-                          type="button"
-                          className={styles.togglePanelBtn}
-                          onClick={() => setIsLeftPanelOpen(!isLeftPanelOpen)}
-                          title={isLeftPanelOpen ? "折叠侧边栏" : "展开侧边栏"}
-                        >
-                          {isLeftPanelOpen ? "收起" : "展开"}
-                        </button>
-                      )}
-                      {isNarrow && (
-                        <button
-                          type="button"
-                          className={styles.togglePanelBtn}
-                          onClick={() => setShowHistoryModal(true)}
-                          title="查看历史对话"
-                        >
-                          历史
-                        </button>
-                      )}
-
-                      <div className={styles.headerTitleGroup}>
-                        <div className={styles.headerTitleRow}>
-                          <h3 className={styles.headerTitle}>AI Assistant</h3>
-                          <span className={styles.headerMeta}>{sessions.length} 个会话</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className={styles.headerActions}>
-                    <div className={styles.agentSelector} ref={agentMenuRef}>
+                  <div className={styles.headerLeft}>
+                    {!isNarrow && (
                       <button
-                        type="button"
-                        className={`${styles.agentSelectorTrigger} ${isAgentMenuOpen ? styles.agentSelectorTriggerActive : ""}`}
-                        onClick={() => setIsAgentMenuOpen((open) => !open)}
-                        aria-haspopup="listbox"
-                        aria-expanded={isAgentMenuOpen}
-                        title={currentAgent?.displayName || "选择模型"}
+                        className={styles.togglePanelBtn}
+                        onClick={() => setIsLeftPanelOpen(!isLeftPanelOpen)}
+                        title={isLeftPanelOpen ? "折叠侧边栏" : "展开侧边栏"}
                       >
-                        <span className={styles.agentSelectorText}>
-                          <span className={styles.agentSelectorPrimary}>
-                            {currentAgent?.displayName || "未选择模型"}
-                          </span>
-                        </span>
-                        <span className={styles.agentSelectorChevron}>{isAgentMenuOpen ? "▴" : "▾"}</span>
+                        {isLeftPanelOpen ? "◀" : "▶"}
                       </button>
-                      {isAgentMenuOpen ? (
-                        <div className={styles.agentMenu} role="listbox" aria-label="选择模型">
-                          {agents.map((agent) => (
-                            <button
-                              key={agent.id}
-                              type="button"
-                              className={`${styles.agentMenuItem} ${agent.id === currentAgent?.id ? styles.agentMenuItemActive : ""}`}
-                              onClick={() => {
-                                setCurrentAgentId(agent.id);
-                                setIsAgentMenuOpen(false);
-                              }}
-                              role="option"
-                              aria-selected={agent.id === currentAgent?.id}
-                              title={`${agent.displayName} (${agent.modelName})`}
-                            >
-                              <span className={styles.agentMenuPrimary}>{agent.displayName}</span>
-                            </button>
-                          ))}
-                        </div>
-                      ) : null}
-                    </div>
-                    <button type="button" className={styles.secondaryButton} onClick={() => setShowSettings(true)}>
-                      设置
-                    </button>
+                    )}
+                    {isNarrow && (
+                      <button
+                        className={styles.togglePanelBtn}
+                        onClick={() => setShowHistoryModal(true)}
+                        title="查看历史对话"
+                      >
+                        💬
+                      </button>
+                    )}
+                  </div>
+                  <div className={styles.agentSelector}>
+                    <span>当前模型:</span>
+                    <select value={currentAgent?.id || ""} onChange={(e) => setCurrentAgentId(e.target.value)}>
+                      {agents.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.displayName}
+                        </option>
+                      ))}
+                    </select>
+                    <button onClick={() => setShowSettings(true)}>设置</button>
                   </div>
                 </div>
 
@@ -333,10 +266,7 @@ const AIAssistant: React.FC<PluginContext> = ({ vm, workspace }) => {
                   <div className={styles.settingsModalOverlay} onClick={() => setShowHistoryModal(false)}>
                     <div className={styles.settingsModal} onClick={(e) => e.stopPropagation()}>
                       <div className={styles.modalHeader}>
-                        <div>
-                          <h3>历史对话</h3>
-                          <p>继续之前的上下文，或快速开始一个新会话。</p>
-                        </div>
+                        <h3>历史对话</h3>
                         <button onClick={handleNewChat} className={styles.newChatBtn} title="新对话">
                           +
                         </button>

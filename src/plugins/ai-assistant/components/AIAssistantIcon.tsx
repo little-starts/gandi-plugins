@@ -1,15 +1,18 @@
 import * as React from "react";
 
 export const AIAssistantIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <rect x="3" y="4" width="18" height="13.5" rx="6.75" fill="currentColor" opacity="0.18" />
-    <path d="M8.25 10.25a1.25 1.25 0 1 0 0 .01ZM15.75 10.25a1.25 1.25 0 1 0 0 .01Z" fill="currentColor" />
-    <path
-      d="M8.5 14.25c.9.8 2.08 1.2 3.5 1.2s2.6-.4 3.5-1.2"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-    />
-    <path d="M8 17.5 6.4 20.4c-.16.29.09.62.4.54l4.14-1.1" fill="currentColor" opacity="0.18" />
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M12 2a10 10 0 1 0 10 10H12V2z"></path>
+    <path d="M12 12L2.1 7.1"></path>
+    <path d="M12 12l9.9 4.9"></path>
   </svg>
 );

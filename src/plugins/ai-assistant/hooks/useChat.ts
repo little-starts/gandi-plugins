@@ -7,7 +7,7 @@ import { getProviderAdapter, isProviderImplemented } from "../providerAdapters";
 interface UseChatOptions {
   messages: ChatMessage[];
   currentAgent: Agent | null;
-  updateSessionMessages: (newMessages: ChatMessage[], targetSessionId?: string) => string;
+  updateSessionMessages: (newMessages: ChatMessage[]) => void;
   vm: any;
 }
 
@@ -196,9 +196,8 @@ export function useChat({ messages, currentAgent, updateSessionMessages, vm }: U
       attachments,
     };
     const newMessages = [...messages, newMessage];
-    let sessionId = "";
 
-    sessionId = updateSessionMessages(newMessages);
+    updateSessionMessages(newMessages);
     setInputText("");
     setAttachments([]);
     setIsGenerating(true);
@@ -214,7 +213,7 @@ export function useChat({ messages, currentAgent, updateSessionMessages, vm }: U
         const requestMessages = currentMessages;
         const assistantMessageIndex = currentMessages.length;
         currentMessages = [...currentMessages, { role: "assistant", content: "" }];
-        updateSessionMessages(currentMessages, sessionId);
+        updateSessionMessages(currentMessages);
 
         const data = await providerAdapter.sendChatCompletion({
           agent: currentAgent,
@@ -231,7 +230,7 @@ export function useChat({ messages, currentAgent, updateSessionMessages, vm }: U
                   }
                 : message,
             );
-            updateSessionMessages(currentMessages, sessionId);
+            updateSessionMessages(currentMessages);
           },
         });
         const responseMessage = data.choices[0].message as ChatMessage;
@@ -245,7 +244,7 @@ export function useChat({ messages, currentAgent, updateSessionMessages, vm }: U
               }
             : message,
         );
-        updateSessionMessages(currentMessages, sessionId);
+        updateSessionMessages(currentMessages);
 
         if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
           for (const toolCall of responseMessage.tool_calls) {
@@ -261,7 +260,7 @@ export function useChat({ messages, currentAgent, updateSessionMessages, vm }: U
                 content: "",
               },
             ];
-            updateSessionMessages(currentMessages, sessionId);
+            updateSessionMessages(currentMessages);
 
             try {
               let args: Record<string, any> = {};
@@ -286,7 +285,7 @@ export function useChat({ messages, currentAgent, updateSessionMessages, vm }: U
                 content: toolResult,
               },
             ];
-            updateSessionMessages(currentMessages, sessionId);
+            updateSessionMessages(currentMessages);
           }
         } else {
           shouldContinue = false;
@@ -298,10 +297,10 @@ export function useChat({ messages, currentAgent, updateSessionMessages, vm }: U
           (message, index) =>
             !(index === currentMessages.length - 1 && message.role === "assistant" && !message.content),
         );
-        updateSessionMessages(trimmedMessages, sessionId);
+        updateSessionMessages(trimmedMessages);
         return;
       }
-      updateSessionMessages([...currentMessages, { role: "assistant", content: `Error: ${err.message}` }], sessionId);
+      updateSessionMessages([...currentMessages, { role: "assistant", content: `Error: ${err.message}` }]);
     } finally {
       abortControllerRef.current = null;
       setIsGenerating(false);
