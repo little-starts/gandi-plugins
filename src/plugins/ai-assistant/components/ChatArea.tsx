@@ -114,43 +114,55 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ messages, isGenerating, vm, 
   return (
     <div className={styles.chatArea} ref={scrollRef} onScroll={handleScroll}>
       {displayItems.length === 0 ? (
-        <div>你好！我是你的 AI 助手。</div>
+        <div className={styles.emptyState}>
+          <span className={styles.emptyStateBadge}>AI Assistant</span>
+          <h4 className={styles.emptyStateTitle}>把问题、需求或代码片段直接发进来</h4>
+          <p className={styles.emptyStateText}>
+            可以让它解释积木逻辑、整理上下文、分析附件，或者直接帮助你修改当前工作区内容。
+          </p>
+        </div>
       ) : (
         displayItems.map((item, index) => {
           if ("role" in item) {
             return (
-              <div key={index} className={styles.userMessage}>
-                <strong>你:</strong>
-                <pre className={styles.messageText}>{item.content}</pre>
-                {item.attachments?.length ? (
-                  <MessageAttachments
-                    attachments={item.attachments}
-                    onOpenAttachment={onOpenWorkspaceAttachment}
-                    vm={vm}
-                  />
-                ) : null}
+              <div key={index} className={`${styles.messageRow} ${styles.userMessage}`}>
+                <div className={styles.messageAvatar}>你</div>
+                <div className={`${styles.messageBubble} ${styles.messageBubbleUser}`}>
+                  <div className={styles.messageRoleLabel}>你的消息</div>
+                  <pre className={styles.messageText}>{item.content}</pre>
+                  {item.attachments?.length ? (
+                    <MessageAttachments
+                      attachments={item.attachments}
+                      onOpenAttachment={onOpenWorkspaceAttachment}
+                      vm={vm}
+                    />
+                  ) : null}
+                </div>
               </div>
             );
           }
 
           return (
-            <div key={index} className={styles.assistantMessage}>
-              <strong>AI:</strong>
-              <div className={styles.assistantSegments}>
-                {item.segments.map((segment) =>
-                  segment.type === "text" ? (
-                    <div key={segment.id} className={styles.messageMarkdown}>
-                      <ReactMarkdown>{segment.content}</ReactMarkdown>
-                    </div>
-                  ) : (
-                    <ToolCallViewer
-                      key={segment.id}
-                      toolCalls={segment.toolCalls}
-                      toolResults={segment.toolResults}
-                      isGenerating={isGenerating}
-                    />
-                  ),
-                )}
+            <div key={index} className={`${styles.messageRow} ${styles.assistantMessage}`}>
+              <div className={styles.messageAvatar}>AI</div>
+              <div className={`${styles.messageBubble} ${styles.messageBubbleAssistant}`}>
+                <div className={styles.messageRoleLabel}>助手回复</div>
+                <div className={styles.assistantSegments}>
+                  {item.segments.map((segment) =>
+                    segment.type === "text" ? (
+                      <div key={segment.id} className={styles.messageMarkdown}>
+                        <ReactMarkdown>{segment.content}</ReactMarkdown>
+                      </div>
+                    ) : (
+                      <ToolCallViewer
+                        key={segment.id}
+                        toolCalls={segment.toolCalls}
+                        toolResults={segment.toolResults}
+                        isGenerating={isGenerating}
+                      />
+                    ),
+                  )}
+                </div>
               </div>
             </div>
           );

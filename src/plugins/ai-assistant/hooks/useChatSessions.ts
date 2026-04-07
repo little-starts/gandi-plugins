@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import useStorageInfo from "hooks/useStorageInfo";
 import { ChatMessage, ChatSession } from "../types";
 
@@ -16,6 +16,19 @@ export function useChatSessions(isNarrow: boolean) {
   const [currentSessionId, setCurrentSessionId] = useStorageInfo<string>("AI_ASSISTANT_CURRENT_SESSION_ID", "");
   const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const currentSessionIdRef = useRef(currentSessionId);
+
+  useEffect(() => {
+    currentSessionIdRef.current = currentSessionId;
+  }, [currentSessionId]);
+
+  const setActiveSessionId = useCallback(
+    (id: string) => {
+      currentSessionIdRef.current = id;
+      setCurrentSessionId(id);
+    },
+    [setCurrentSessionId],
+  );
 
   useEffect(() => {
     if (isNarrow) {
@@ -35,68 +48,70 @@ export function useChatSessions(isNarrow: boolean) {
   useEffect(() => {
     if (!currentSessionId) return;
     if (!sessions.some((session) => session.id === currentSessionId)) {
-      setCurrentSessionId("");
+      setActiveSessionId("");
     }
-  }, [currentSessionId, sessions, setCurrentSessionId]);
+  }, [currentSessionId, sessions, setActiveSessionId]);
 
   const handleNewChat = () => {
-    setCurrentSessionId("");
+    setActiveSessionId("");
     if (isNarrow) setShowHistoryModal(false);
   };
 
   const handleSelectSession = (id: string) => {
-    setCurrentSessionId(id);
+    setActiveSessionId(id);
     if (isNarrow) setShowHistoryModal(false);
   };
 
   const handleDeleteSession = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const newSessions = sessions.filter((s) => s.id !== id);
-    setSessions(newSessions);
+    setSessions((previousSessions) => previousSessions.filter((session) => session.id !== id));
     if (currentSessionId === id) {
-      setCurrentSessionId("");
+      setActiveSessionId("");
     }
   };
 
-  const updateSessionMessages = (newMessages: ChatMessage[]) => {
-    let sessionId = currentSessionId;
-    const newSessions = [...sessions];
-    const updatedAt = Date.now();
-
-    if (!sessionId) {
-      sessionId = updatedAt.toString();
-      setCurrentSessionId(sessionId);
+  const updateSessionMessages = useCallback(
+    (newMessages: ChatMessage[], targetSessionId?: string) => {
+      let sessionId = targetSessionId || currentSessionIdRef.current;
+      const updatedAt = Date.now();
       const title = getSessionTitle(newMessages);
 
-      newSessions.unshift({
-        id: sessionId,
-        title,
-        messages: newMessages,
-        updatedAt,
-      });
-    } else {
-      const sessionIndex = newSessions.findIndex((s) => s.id === sessionId);
-      if (sessionIndex > -1) {
-        newSessions[sessionIndex] = {
-          ...newSessions[sessionIndex],
-          messages: newMessages,
-          updatedAt,
-        };
-        // Move to top
-        const session = newSessions.splice(sessionIndex, 1)[0];
-        newSessions.unshift(session);
-      } else {
-        const title = getSessionTitle(newMessages);
-        newSessions.unshift({
+      if (!sessionId) {
+        sessionId = updatedAt.toString();
+        setActiveSessionId(sessionId);
+      }
+
+      setSessions((previousSessions) => {
+        const nextSessions = [...previousSessions];
+        const sessionIndex = nextSessions.findIndex((session) => session.id === sessionId);
+
+        if (sessionIndex > -1) {
+          nextSessions[sessionIndex] = {
+            ...nextSessions[sessionIndex],
+            title,
+            messages: newMessages,
+            updatedAt,
+          };
+
+          const session = nextSessions.splice(sessionIndex, 1)[0];
+          nextSessions.unshift(session);
+          return nextSessions;
+        }
+
+        nextSessions.unshift({
           id: sessionId,
           title,
           messages: newMessages,
           updatedAt,
         });
-      }
-    }
-    setSessions(newSessions);
-  };
+
+        return nextSessions;
+      });
+
+      return sessionId;
+    },
+    [setActiveSessionId, setSessions],
+  );
 
   return {
     sessions,

@@ -74,7 +74,7 @@ export const ToolCallViewer: React.FC<ToolCallViewerProps> = ({
 
   return (
     <div className={styles.toolCallSummary}>
-      <div className={styles.toolCallSummaryHeader} onClick={() => setExpanded((prev) => !prev)}>
+      <button type="button" className={styles.toolCallSummaryHeader} onClick={() => setExpanded((prev) => !prev)}>
         <span className={styles.toggleIcon}>{expanded ? "▼" : "▶"}</span>
         <span>
           本轮调用了 {entries.length} 个工具
@@ -82,18 +82,18 @@ export const ToolCallViewer: React.FC<ToolCallViewerProps> = ({
           {errorCount > 0 ? `，${errorCount} 个失败` : ""}
           {isGenerating && runningCount === 0 ? "，等待模型继续处理" : ""}
         </span>
-      </div>
+      </button>
       {expanded ? (
         <div className={styles.toolCallList}>
           {entries.map((entry) => (
             <div key={entry.id} className={styles.toolCallItem}>
-              <div className={styles.toolCallItemHeader} onClick={() => toggleDetail(entry.id)}>
+              <button type="button" className={styles.toolCallItemHeader} onClick={() => toggleDetail(entry.id)}>
                 <span className={styles.toggleIcon}>{expandedDetails[entry.id] ? "▼" : "▶"}</span>
                 <span className={`${styles.toolCallStatus} ${styles[`toolCallStatus${entry.status}`]}`}>
                   {STATUS_LABELS[entry.status]}
                 </span>
                 <span className={styles.toolCallName}>{entry.name}</span>
-              </div>
+              </button>
               {expandedDetails[entry.id] ? (
                 <div className={styles.toolCallDetail}>
                   <div className={styles.toolCallSection}>

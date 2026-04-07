@@ -20,12 +20,16 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({
   return (
     <div className={styles.leftPanel}>
       <div className={styles.historyHeader}>
-        <span>聊天记录</span>
+        <div>
+          <span>聊天记录</span>
+          <div className={styles.historySubtitle}>最近的上下文和问题线程</div>
+        </div>
         <button onClick={onNewChat} className={styles.newChatBtn} title="新对话">
           +
         </button>
       </div>
       <div className={styles.historyList}>
+        {sessions.length === 0 ? <div className={styles.historyEmpty}>还没有会话，开始一个新的提问吧。</div> : null}
         {sessions.map((s) => (
           <div
             key={s.id}
