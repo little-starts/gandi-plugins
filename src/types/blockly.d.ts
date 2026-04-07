@@ -27,6 +27,7 @@ declare namespace Blockly {
   export interface Connection {
     type: string;
     checkType_(otherConnection: Connection): boolean;
+    sourceBlock_?: Blockly.Block | null;
     targetConnection?: Connection;
     disconnect(): void;
     isConnected?: () => boolean;

@@ -28,4 +28,5 @@ export default {
   "clean-pro": () => import(/* webpackChunkName: "plugin-clean-pro" */ "src/plugins/clean-pro"),
   "witcat-infinite-canvas": () => import(/* webpackChunkName: "plugin-witcat-infinite-canvas" */ "src/plugins/witcat-infinite-canvas"),
   "find-definition": () => import(/* webpackChunkName: "plugin-find-definition" */ "src/plugins/find-definition"),
+  "ai-assistant": () => import(/* webpackChunkName: "plugin-ai-assistant" */ "src/plugins/ai-assistant"),
 } as const;
