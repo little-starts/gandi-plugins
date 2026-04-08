@@ -1,4 +1,5 @@
 import { scratchToUCF, ucfToScratch } from "./ucf";
+import { stripAnnotatedUCFComments, toAnnotatedUCF } from "./annotatedUcf";
 import { getBlocksRangeUCF, replaceBlocksRangeByUCF } from "./workspaceRangeTools";
 
 // This file contains tools for the AI assistant to interact with Scratch.
@@ -151,6 +152,235 @@ export class AITools {
     this.vm = vm;
   }
 
+  private _getTarget(targetId?: string) {
+    return targetId ? this.vm.runtime.getTargetById(targetId) : this.vm.editingTarget;
+  }
+
+  private _getBlocks(targetId?: string) {
+    const target = this._getTarget(targetId);
+    if (!target?.blocks?._blocks) {
+      return null;
+    }
+
+    return {
+      target,
+      blocks: target.blocks._blocks as Record<string, any>,
+    };
+  }
+
+  private _getTopLevelBlocks(blocks: Record<string, any>) {
+    return Object.values(blocks).filter((block: any) => block?.topLevel && !block?.parent);
+  }
+
+  private _collectScriptBlockIds(blocks: Record<string, any>, topBlockId: string) {
+    const visited = new Set<string>();
+    const order: string[] = [];
+    const walkChain = (blockId?: string) => {
+      let currentId = blockId;
+
+      while (currentId && !visited.has(currentId)) {
+        visited.add(currentId);
+        order.push(currentId);
+        const block = blocks[currentId];
+        if (!block) {
+          break;
+        }
+
+        if (block.inputs) {
+          for (const input of Object.values(block.inputs) as any[]) {
+            const inputBlockId = input?.block;
+            if (inputBlockId && !visited.has(inputBlockId)) {
+              walkChain(inputBlockId);
+            }
+          }
+        }
+
+        currentId = block.next;
+      }
+    };
+
+    walkChain(topBlockId);
+    return order;
+  }
+
+  private _collectStatementBlocks(blocks: Record<string, any>, topBlockId: string) {
+    const statementBlockIds = this._collectScriptBlockIds(blocks, topBlockId);
+    return {
+      statementBlockIds,
+      blocks: statementBlockIds.map((blockId) => blocks[blockId]).filter(Boolean),
+    };
+  }
+
+  private _buildScriptSummary(blocks: Record<string, any>, topBlock: any, targetId: string) {
+    const blockIds = this._collectScriptBlockIds(blocks, topBlock.id);
+    const firstStatements = blockIds
+      .slice(0, 6)
+      .map((blockId) => blocks[blockId])
+      .filter(Boolean)
+      .map((block: any) => AITools.AllBlockInfo[block.opcode] || block.opcode);
+
+    return {
+      scriptId: topBlock.id,
+      targetId,
+      hatOpcode: topBlock.opcode,
+      blockCount: blockIds.length,
+      blockIds,
+      summary: firstStatements.join(" -> "),
+    };
+  }
+
+  private _resolveTopLevelScriptId(blocks: Record<string, any>, blockId?: string) {
+    let currentId = blockId;
+    while (currentId) {
+      const block = blocks[currentId];
+      if (!block) {
+        break;
+      }
+      if (block.topLevel || !block.parent) {
+        return currentId;
+      }
+      currentId = block.parent;
+    }
+    return null;
+  }
+
+  private _normalizeBlockText(value: any) {
+    if (typeof value === "string") {
+      return value;
+    }
+
+    if (Array.isArray(value)) {
+      return value.join(" ");
+    }
+
+    return "";
+  }
+
+  private _matchKeyword(candidate: string, keyword?: string) {
+    if (!keyword?.trim()) return true;
+    const keywords = keyword.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const haystack = candidate.toLowerCase();
+    return keywords.every((item) => haystack.includes(item));
+  }
+
+  listTargets() {
+    const targets = Array.isArray(this.vm.runtime?.targets) ? this.vm.runtime.targets : [];
+    return targets.map((target: any) => ({
+      id: target.id,
+      originalTargetId: target.originalTargetId || target.id,
+      name: target.getName?.() || target.sprite?.name || target.id,
+      isStage: Boolean(target.isStage),
+      isEditingTarget: this.vm.editingTarget?.id === target.id,
+    }));
+  }
+
+  getTopLevelScripts(targetId?: string) {
+    const result = this._getBlocks(targetId);
+    if (!result) return [];
+
+    return this._getTopLevelBlocks(result.blocks)
+      .map((block: any) => this._buildScriptSummary(result.blocks, block, result.target.id))
+      .sort((left: any, right: any) => left.scriptId.localeCompare(right.scriptId));
+  }
+
+  getScriptUCF(scriptId: string, targetId?: string) {
+    const result = this._getBlocks(targetId);
+    if (!result) {
+      return {
+        found: false,
+        error: "Target not found",
+      };
+    }
+
+    const topBlock = result.blocks[scriptId];
+    if (!topBlock) {
+      return {
+        found: false,
+        error: "Script not found",
+      };
+    }
+
+    const scriptBlockIds = this._collectScriptBlockIds(result.blocks, scriptId);
+    const scriptBlocks = scriptBlockIds.map((blockId) => result.blocks[blockId]).filter(Boolean);
+
+    return {
+      found: true,
+      scriptId,
+      targetId: result.target.id,
+      hatOpcode: topBlock.opcode,
+      blockCount: scriptBlocks.length,
+      ucf: toAnnotatedUCF([
+        {
+          blocks: scriptBlocks,
+          statementBlockIds: scriptBlockIds,
+        },
+      ]),
+    };
+  }
+
+  findBlocks(options?: { targetId?: string; opcode?: string; keyword?: string; scriptId?: string; limit?: number }) {
+    const { targetId, opcode, keyword, scriptId, limit = 50 } = options || {};
+    const targets = targetId
+      ? [this._getTarget(targetId)].filter(Boolean)
+      : this.listTargets().map((item) => this._getTarget(item.id));
+    const matches: any[] = [];
+
+    for (const target of targets) {
+      if (!target?.blocks?._blocks) {
+        continue;
+      }
+
+      const blocks = target.blocks._blocks as Record<string, any>;
+      for (const block of Object.values(blocks) as any[]) {
+        if (!block?.id || !block.opcode) {
+          continue;
+        }
+
+        const topLevelScriptId = this._resolveTopLevelScriptId(blocks, block.id);
+        if (scriptId && topLevelScriptId !== scriptId) {
+          continue;
+        }
+
+        if (opcode && block.opcode !== opcode) {
+          continue;
+        }
+
+        const fieldsText = Object.values(block.fields || {})
+          .map((field: any) => this._normalizeBlockText(field?.value))
+          .filter(Boolean)
+          .join(" ");
+        const textCandidate = [block.opcode, AITools.AllBlockInfo[block.opcode] || "", fieldsText].join(" ");
+        if (!this._matchKeyword(textCandidate, keyword)) {
+          continue;
+        }
+
+        matches.push({
+          blockId: block.id,
+          opcode: block.opcode,
+          targetId: target.id,
+          targetName: target.getName?.() || target.sprite?.name || target.id,
+          topLevelScriptId,
+          parentId: block.parent || null,
+          nextId: block.next || null,
+          isTopLevel: Boolean(block.topLevel),
+          fields: Object.fromEntries(
+            Object.entries(block.fields || {}).map(([fieldName, fieldValue]: [string, any]) => [
+              fieldName,
+              fieldValue?.value,
+            ]),
+          ),
+          text: AITools.AllBlockInfo[block.opcode] || block.opcode,
+        });
+
+        if (matches.length >= limit) {
+          return matches;
+        }
+      }
+    }
+
+    return matches;
+  }
+
   getAllExtensions() {
     const result = [];
     if (this.vm.runtime._blockInfo) {
@@ -301,16 +531,29 @@ export class AITools {
     const target = targetId ? this.vm.runtime.getTargetById(targetId) : this.vm.editingTarget;
     if (!target) return false;
 
-    // This emits an event that the workspace should catch to run cleanUp
-    this.vm.emit("workspaceUpdate");
-    return true;
+    const workspace = window.Blockly.getMainWorkspace() as Blockly.WorkspaceSvg | null;
+    if (workspace && typeof workspace.cleanUp === "function") {
+      try {
+        workspace.cleanUp();
+        return true;
+      } catch (e) {
+        return "Error: " + e;
+      }
+    }
+    return false;
   }
 
   getWorkspaceUCF(targetId?: string) {
     const target = targetId ? this.vm.runtime.getTargetById(targetId) : this.vm.editingTarget;
     if (!target) return "";
-    const blocksArray = Object.values(target.blocks._blocks);
-    return scratchToUCF(blocksArray);
+
+    const blocks = target.blocks?._blocks as Record<string, any>;
+    if (!blocks) return "";
+
+    const sequences = this._getTopLevelBlocks(blocks).map((block: any) =>
+      this._collectStatementBlocks(blocks, block.id),
+    );
+    return toAnnotatedUCF(sequences);
   }
 
   getCustomBlocks(targetId?: string) {
@@ -385,7 +628,7 @@ export class AITools {
     console.log("[AI Tool Call] generateCodeFromUCF started. UCF String:", ucfString);
     let newBlocks;
     try {
-      newBlocks = ucfToScratch(ucfString);
+      newBlocks = ucfToScratch(stripAnnotatedUCFComments(ucfString));
       console.log("[AI Tool Call] Parsed blocks array:", newBlocks);
     } catch (e) {
       console.error("[AI Tool Call] Error parsing UCF string:", e);

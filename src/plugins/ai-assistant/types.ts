@@ -40,6 +40,9 @@ export interface ToolCall {
 export interface ChatMessage {
   role: "user" | "assistant" | "tool" | "system";
   content: string;
+  reasoning?: string;
+  reasoningStartedAt?: number;
+  reasoningEndedAt?: number;
   tool_calls?: ToolCall[];
   tool_call_id?: string;
   name?: string;

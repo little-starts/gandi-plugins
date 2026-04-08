@@ -1,22 +1,77 @@
-import { Agent, ChatMessage } from "./types";
+import { Agent, ChatMessage, ToolCall } from "./types";
 
 interface ChatCompletionRequest {
   agent: Agent;
   messages: ChatMessage[];
   tools?: unknown[];
   toolChoice?: string;
+  enableReasoning?: boolean;
   signal?: AbortSignal;
   onTextDelta?: (delta: string) => void;
+  onReasoningDelta?: (delta: string) => void;
+  onToolCallsDelta?: (toolCalls: ToolCall[]) => void;
 }
 
 export interface ProviderAdapter {
   sendChatCompletion: (request: ChatCompletionRequest) => Promise<any>;
 }
 
+const collectReasoningText = (value: unknown): string => {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+
+  if (Array.isArray(value)) {
+    return value.map((item) => collectReasoningText(item)).join("");
+  }
+
+  if (typeof value === "object") {
+    const candidate = value as Record<string, unknown>;
+    return [
+      candidate.reasoning_content,
+      candidate.reasoning,
+      candidate.reasoning_text,
+      candidate.text,
+      candidate.content,
+      candidate.output_text,
+    ]
+      .map((item) => collectReasoningText(item))
+      .join("");
+  }
+
+  return "";
+};
+
+const getOpenAIReasoningDelta = (delta: Record<string, unknown>) =>
+  collectReasoningText(
+    delta.reasoning_content ||
+      delta.reasoning ||
+      delta.reasoning_text ||
+      delta.reasoning_details ||
+      delta.reasoning_delta,
+  );
+
+const cloneToolCalls = (toolCalls: ToolCall[]) =>
+  toolCalls.map((toolCall) => ({
+    ...toolCall,
+    function: {
+      ...toolCall.function,
+    },
+  }));
+
 const OPENAI_COMPATIBLE_PROVIDERS = new Set<Agent["provider"]>(["openai", "zhipu", "deepseek", "custom"]);
 
 class OpenAICompatibleAdapter implements ProviderAdapter {
-  async sendChatCompletion({ agent, messages, tools, toolChoice, signal, onTextDelta }: ChatCompletionRequest) {
+  async sendChatCompletion({
+    agent,
+    messages,
+    tools,
+    toolChoice,
+    enableReasoning,
+    signal,
+    onTextDelta,
+    onReasoningDelta,
+    onToolCallsDelta,
+  }: ChatCompletionRequest) {
     const response = await fetch(`${agent.baseUrl}/chat/completions`, {
       method: "POST",
       headers: {
@@ -29,6 +84,12 @@ class OpenAICompatibleAdapter implements ProviderAdapter {
         tools,
         tool_choice: toolChoice,
         stream: true,
+        ...(enableReasoning
+          ? {
+              reasoning: { enabled: true },
+              include_reasoning: true,
+            }
+          : {}),
       }),
       signal,
     });
@@ -46,6 +107,7 @@ class OpenAICompatibleAdapter implements ProviderAdapter {
     const decoder = new TextDecoder();
     let buffer = "";
     let content = "";
+    let reasoning = "";
     const toolCalls: Array<{ id: string; type: "function"; function: { name: string; arguments: string } }> = [];
 
     let reading = true;
@@ -79,12 +141,19 @@ class OpenAICompatibleAdapter implements ProviderAdapter {
         const delta = parsed.choices?.[0]?.delta;
         if (!delta) continue;
 
+        const reasoningDelta = getOpenAIReasoningDelta(delta as Record<string, unknown>);
+        if (reasoningDelta) {
+          reasoning += reasoningDelta;
+          onReasoningDelta?.(reasoningDelta);
+        }
+
         if (typeof delta.content === "string" && delta.content) {
           content += delta.content;
           onTextDelta?.(delta.content);
         }
 
         if (Array.isArray(delta.tool_calls)) {
+          let toolCallsChanged = false;
           for (const toolCallDelta of delta.tool_calls) {
             const index = toolCallDelta.index ?? toolCalls.length;
             if (!toolCalls[index]) {
@@ -96,18 +165,26 @@ class OpenAICompatibleAdapter implements ProviderAdapter {
                   arguments: toolCallDelta.function?.arguments || "",
                 },
               };
+              toolCallsChanged = true;
               continue;
             }
 
             if (toolCallDelta.id) {
               toolCalls[index].id = toolCallDelta.id;
+              toolCallsChanged = true;
             }
             if (toolCallDelta.function?.name) {
               toolCalls[index].function.name += toolCallDelta.function.name;
+              toolCallsChanged = true;
             }
             if (toolCallDelta.function?.arguments) {
               toolCalls[index].function.arguments += toolCallDelta.function.arguments;
+              toolCallsChanged = true;
             }
+          }
+
+          if (toolCallsChanged) {
+            onToolCallsDelta?.(cloneToolCalls(toolCalls.filter((toolCall) => toolCall.id || toolCall.function.name)));
           }
         }
       }
@@ -119,6 +196,7 @@ class OpenAICompatibleAdapter implements ProviderAdapter {
           message: {
             role: "assistant",
             content,
+            reasoning,
             tool_calls: toolCalls.filter((toolCall) => toolCall.id || toolCall.function.name),
           },
         },
@@ -128,7 +206,16 @@ class OpenAICompatibleAdapter implements ProviderAdapter {
 }
 
 class AnthropicAdapter implements ProviderAdapter {
-  async sendChatCompletion({ agent, messages, tools, signal, onTextDelta }: ChatCompletionRequest) {
+  async sendChatCompletion({
+    agent,
+    messages,
+    tools,
+    enableReasoning,
+    signal,
+    onTextDelta,
+    onReasoningDelta,
+    onToolCallsDelta,
+  }: ChatCompletionRequest) {
     const systemMessages = messages.filter((message) => message.role === "system").map((message) => message.content);
     const conversationMessages = messages.filter((message) => message.role !== "system");
 
@@ -148,6 +235,14 @@ class AnthropicAdapter implements ProviderAdapter {
           role: message.role === "assistant" ? "assistant" : "user",
           content: message.role === "tool" ? `Tool result (${message.name}): ${message.content}` : message.content,
         })),
+        ...(enableReasoning
+          ? {
+              thinking: {
+                type: "enabled",
+                budget_tokens: 2048,
+              },
+            }
+          : {}),
         tools: Array.isArray(tools)
           ? tools.map((tool: any) => ({
               name: tool.function.name,
@@ -172,6 +267,7 @@ class AnthropicAdapter implements ProviderAdapter {
     const decoder = new TextDecoder();
     let buffer = "";
     let content = "";
+    let reasoning = "";
     const toolCalls: Array<{ id: string; type: "function"; function: { name: string; arguments: string } }> = [];
     let reading = true;
 
@@ -206,6 +302,22 @@ class AnthropicAdapter implements ProviderAdapter {
           onTextDelta?.(deltaText);
         }
 
+        if (parsed.type === "content_block_start" && parsed.content_block?.type === "thinking") {
+          const thinkingText = parsed.content_block.thinking || parsed.content_block.text || "";
+          if (thinkingText) {
+            reasoning += thinkingText;
+            onReasoningDelta?.(thinkingText);
+          }
+        }
+
+        if (parsed.type === "content_block_delta" && parsed.delta?.type === "thinking_delta") {
+          const thinkingText = parsed.delta.thinking || parsed.delta.text || "";
+          if (thinkingText) {
+            reasoning += thinkingText;
+            onReasoningDelta?.(thinkingText);
+          }
+        }
+
         if (parsed.type === "content_block_start" && parsed.content_block?.type === "tool_use") {
           toolCalls.push({
             id: parsed.content_block.id || "",
@@ -215,12 +327,14 @@ class AnthropicAdapter implements ProviderAdapter {
               arguments: "",
             },
           });
+          onToolCallsDelta?.(cloneToolCalls(toolCalls.filter((toolCall) => toolCall.id || toolCall.function.name)));
         }
 
         if (parsed.type === "content_block_delta" && parsed.delta?.type === "input_json_delta") {
           const lastToolCall = toolCalls[toolCalls.length - 1];
           if (lastToolCall) {
             lastToolCall.function.arguments += parsed.delta.partial_json || "";
+            onToolCallsDelta?.(cloneToolCalls(toolCalls.filter((toolCall) => toolCall.id || toolCall.function.name)));
           }
         }
       }
@@ -232,6 +346,7 @@ class AnthropicAdapter implements ProviderAdapter {
           message: {
             role: "assistant",
             content,
+            reasoning,
             tool_calls: toolCalls.filter((toolCall) => toolCall.id || toolCall.function.name),
           },
         },

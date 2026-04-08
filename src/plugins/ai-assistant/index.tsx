@@ -17,6 +17,7 @@ import { useAttachmentInteraction } from "./hooks/useAttachmentInteraction";
 import { useBlockRangeSelection } from "./hooks/useBlockRangeSelection";
 import { useChatSessions } from "./hooks/useChatSessions";
 import { useChat } from "./hooks/useChat";
+import { useStoredState } from "./hooks/useStoredState";
 import { Attachment } from "./types";
 import { getAttachmentDisplayName } from "./attachmentUtils";
 
@@ -32,6 +33,7 @@ const AIAssistant: React.FC<PluginContext> = ({ vm, workspace }) => {
   const [isAgentMenuOpen, setIsAgentMenuOpen] = React.useState(false);
   const containerRef = React.useRef(null);
   const agentMenuRef = React.useRef<HTMLDivElement | null>(null);
+  const [enableReasoning, setEnableReasoning] = useStoredState<boolean>("AI_ASSISTANT_ENABLE_REASONING", false);
 
   const [containerInfo, setContainerInfo] = useStorageInfo<ExpansionRect>(
     "AI_ASSISTANT_CONTAINER_INFO",
@@ -74,6 +76,7 @@ const AIAssistant: React.FC<PluginContext> = ({ vm, workspace }) => {
       messages,
       currentAgent,
       updateSessionMessages,
+      enableReasoning,
       vm,
     });
 
@@ -302,6 +305,8 @@ const AIAssistant: React.FC<PluginContext> = ({ vm, workspace }) => {
                   onStartBlockSelection={startSelecting}
                   onCancelBlockSelection={cancelSelecting}
                   isSelectingBlocks={isSelecting}
+                  enableReasoning={enableReasoning}
+                  onToggleReasoning={() => setEnableReasoning((previous) => !previous)}
                   onOpenAttachment={handleOpenAttachment}
                   isGenerating={isGenerating}
                   vm={vm}

@@ -2,6 +2,86 @@ export const scratchToolSchemas = [
   {
     type: "function",
     function: {
+      name: "listTargets",
+      description: "List all stage and sprite targets in the current project.",
+      parameters: {
+        type: "object",
+        properties: {},
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "getTopLevelScripts",
+      description: "Get a structured list of top-level scripts for a target.",
+      parameters: {
+        type: "object",
+        properties: {
+          targetId: {
+            type: "string",
+            description: "The ID of the target. If omitted, uses the current editing target.",
+          },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "getScriptUCF",
+      description: "Get the UCF for a specific top-level script by scriptId.",
+      parameters: {
+        type: "object",
+        properties: {
+          scriptId: {
+            type: "string",
+            description: "The top-level script ID.",
+          },
+          targetId: {
+            type: "string",
+            description: "The ID of the target. If omitted, uses the current editing target.",
+          },
+        },
+        required: ["scriptId"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "findBlocks",
+      description: "Find blocks by opcode, keyword, target, or top-level script scope.",
+      parameters: {
+        type: "object",
+        properties: {
+          targetId: {
+            type: "string",
+            description: "Limit search to a specific target.",
+          },
+          opcode: {
+            type: "string",
+            description: "Match a specific opcode exactly.",
+          },
+          keyword: {
+            type: "string",
+            description: "Match keyword text against opcode info and field values.",
+          },
+          scriptId: {
+            type: "string",
+            description: "Limit search to a specific top-level script.",
+          },
+          limit: {
+            type: "number",
+            description: "Maximum number of results to return. Defaults to 50.",
+          },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "getAllPrimitiveBlocks",
       description: "Get a list of all native/primitive Scratch opcodes and their text representations.",
       parameters: {
