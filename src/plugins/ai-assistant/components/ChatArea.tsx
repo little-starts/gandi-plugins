@@ -14,13 +14,47 @@ interface ChatAreaProps {
 
 type AssistantSegment =
   | { type: "text"; id: string; content: string }
+  | {
+      type: "reasoning";
+      id: string;
+      content: string;
+      isComplete: boolean;
+      startedAt?: number;
+      endedAt?: number;
+    }
   | { type: "tools"; id: string; toolCalls: ToolCall[]; toolResults: ChatMessage[] };
 
 interface AssistantBubble {
   segments: AssistantSegment[];
 }
 
-const collectAssistantBubbles = (messages: ChatMessage[]) => {
+interface ReasoningPanelState {
+  collapsed: boolean;
+  hasAutoCollapsed: boolean;
+}
+
+const ChevronRightIcon = ({ expanded }: { expanded: boolean }) => (
+  <svg
+    width="12"
+    height="12"
+    viewBox="0 0 12 12"
+    fill="none"
+    aria-hidden="true"
+    style={{ transform: expanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.2s ease" }}
+  >
+    <path d="M4 2.5 7.5 6 4 9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const formatReasoningDuration = (startedAt?: number, endedAt?: number) => {
+  if (!startedAt || !endedAt || endedAt < startedAt) {
+    return "已思考";
+  }
+
+  return `已思考 ${((endedAt - startedAt) / 1000).toFixed(2)}s`;
+};
+
+const collectAssistantBubbles = (messages: ChatMessage[], isGenerating: boolean) => {
   const items: Array<ChatMessage | AssistantBubble> = [];
 
   for (let index = 0; index < messages.length; index++) {
@@ -37,8 +71,38 @@ const collectAssistantBubbles = (messages: ChatMessage[]) => {
         const currentMessage = messages[cursor];
 
         if (currentMessage.role === "assistant") {
+          const normalizedReasoning = currentMessage.reasoning?.trim() || "";
           const normalizedContent = currentMessage.content?.trim() || "";
+          const hasReasoningContent = Boolean(normalizedReasoning);
           const hasTextContent = Boolean(normalizedContent);
+
+          if (hasReasoningContent) {
+            segments.push({
+              type: "reasoning",
+              id: `reasoning-${cursor}`,
+              content: normalizedReasoning,
+              isComplete: Boolean(normalizedContent || currentMessage.tool_calls?.length),
+              startedAt: currentMessage.reasoningStartedAt,
+              endedAt: currentMessage.reasoningEndedAt,
+            });
+          }
+
+          if (
+            !hasReasoningContent &&
+            !hasTextContent &&
+            !currentMessage.tool_calls?.length &&
+            isGenerating &&
+            cursor === messages.length - 1
+          ) {
+            segments.push({
+              type: "reasoning",
+              id: `reasoning-${cursor}`,
+              content: "",
+              isComplete: false,
+              startedAt: currentMessage.reasoningStartedAt,
+              endedAt: currentMessage.reasoningEndedAt,
+            });
+          }
 
           if (hasTextContent) {
             segments.push({
@@ -87,9 +151,10 @@ const collectAssistantBubbles = (messages: ChatMessage[]) => {
 };
 
 export const ChatArea: React.FC<ChatAreaProps> = ({ messages, isGenerating, vm, onOpenWorkspaceAttachment }) => {
-  const displayItems = React.useMemo(() => collectAssistantBubbles(messages), [messages]);
+  const displayItems = React.useMemo(() => collectAssistantBubbles(messages, isGenerating), [messages, isGenerating]);
   const scrollRef = React.useRef<HTMLDivElement | null>(null);
   const [isStickyToBottom, setIsStickyToBottom] = React.useState(true);
+  const [reasoningPanels, setReasoningPanels] = React.useState<Record<string, ReasoningPanelState>>({});
 
   const scrollToBottom = React.useCallback((behavior: ScrollBehavior = "smooth") => {
     const element = scrollRef.current;
@@ -110,6 +175,54 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ messages, isGenerating, vm, 
       scrollToBottom("auto");
     }
   }, [displayItems, isGenerating, isStickyToBottom, scrollToBottom]);
+
+  React.useEffect(() => {
+    setReasoningPanels((previous) => {
+      const next = { ...previous };
+      let changed = false;
+
+      displayItems.forEach((item) => {
+        if ("role" in item) {
+          return;
+        }
+
+        item.segments.forEach((segment) => {
+          if (segment.type !== "reasoning") {
+            return;
+          }
+
+          if (!(segment.id in next)) {
+            next[segment.id] = {
+              collapsed: segment.isComplete,
+              hasAutoCollapsed: segment.isComplete,
+            };
+            changed = true;
+            return;
+          }
+
+          if (segment.isComplete && !next[segment.id].hasAutoCollapsed) {
+            next[segment.id] = {
+              collapsed: true,
+              hasAutoCollapsed: true,
+            };
+            changed = true;
+          }
+        });
+      });
+
+      return changed ? next : previous;
+    });
+  }, [displayItems]);
+
+  const toggleReasoning = React.useCallback((id: string) => {
+    setReasoningPanels((previous) => ({
+      ...previous,
+      [id]: {
+        collapsed: !previous[id]?.collapsed,
+        hasAutoCollapsed: previous[id]?.hasAutoCollapsed ?? false,
+      },
+    }));
+  }, []);
 
   return (
     <div className={styles.chatArea} ref={scrollRef} onScroll={handleScroll}>
@@ -153,6 +266,28 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ messages, isGenerating, vm, 
                       <div key={segment.id} className={styles.messageMarkdown}>
                         <ReactMarkdown>{segment.content}</ReactMarkdown>
                       </div>
+                    ) : segment.type === "reasoning" ? (
+                      <div key={segment.id} className={styles.reasoningInline}>
+                        <button
+                          type="button"
+                          className={styles.reasoningInlineButton}
+                          onClick={() => toggleReasoning(segment.id)}
+                        >
+                          <span className={styles.reasoningInlineLabel}>
+                            {segment.isComplete
+                              ? formatReasoningDuration(segment.startedAt, segment.endedAt)
+                              : "思考中..."}
+                          </span>
+                          <span className={styles.reasoningInlineArrow}>
+                            <ChevronRightIcon expanded={!reasoningPanels[segment.id]?.collapsed} />
+                          </span>
+                        </button>
+                        {!reasoningPanels[segment.id]?.collapsed ? (
+                          <div className={styles.reasoningInlineBody}>
+                            <pre className={styles.reasoningText}>{segment.content || "模型正在整理思路..."}</pre>
+                          </div>
+                        ) : null}
+                      </div>
                     ) : (
                       <ToolCallViewer
                         key={segment.id}
@@ -168,7 +303,6 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ messages, isGenerating, vm, 
           );
         })
       )}
-      {isGenerating && <div className={styles.generatingTip}>AI 正在思考...</div>}
       {!isStickyToBottom ? (
         <button className={styles.scrollToBottomButton} onClick={() => scrollToBottom()} title="回到底部">
           ↓

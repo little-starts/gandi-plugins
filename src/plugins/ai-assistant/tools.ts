@@ -537,7 +537,8 @@ export class AITools {
         workspace.cleanUp();
         return true;
       } catch (e) {
-        return "Error: " + e;
+        console.error("Cleanup error:", e);
+        return false;
       }
     }
     return false;

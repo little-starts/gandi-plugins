@@ -23,6 +23,12 @@ const StopIcon = () => (
   </svg>
 );
 
+const ChevronRightIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+    <path d="M4 2.5 7.5 6 4 9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 interface InputAreaProps {
   inputText: string;
   setInputText: (text: string) => void;
@@ -33,6 +39,8 @@ interface InputAreaProps {
   onStartBlockSelection: () => void;
   onCancelBlockSelection: () => void;
   isSelectingBlocks: boolean;
+  enableReasoning: boolean;
+  onToggleReasoning: () => void;
   onOpenAttachment: (attachment: Attachment) => void;
   isGenerating: boolean;
   vm: PluginContext["vm"];
@@ -48,6 +56,8 @@ export const InputArea: React.FC<InputAreaProps> = ({
   onStartBlockSelection,
   onCancelBlockSelection,
   isSelectingBlocks,
+  enableReasoning,
+  onToggleReasoning,
   onOpenAttachment,
   isGenerating,
   vm,
@@ -139,6 +149,14 @@ export const InputArea: React.FC<InputAreaProps> = ({
           <div className={styles.inputTools}>
             <button
               type="button"
+              className={`${styles.toolButton} ${enableReasoning ? styles.toolButtonActive : ""}`}
+              onClick={onToggleReasoning}
+              title="开启或关闭思考"
+            >
+              思考
+            </button>
+            <button
+              type="button"
               className={styles.toolButton}
               onClick={isSelectingBlocks ? onCancelBlockSelection : onStartBlockSelection}
               title="选择积木片段"
@@ -154,7 +172,12 @@ export const InputArea: React.FC<InputAreaProps> = ({
               添加文件
             </button>
           </div>
-          <div className={styles.inputHint}>Enter 发送，Shift + Enter 换行</div>
+          <div className={styles.inputHint}>
+            <span>Enter 发送，Shift + Enter 换行</span>
+            <span className={styles.inputHintChevron}>
+              <ChevronRightIcon />
+            </span>
+          </div>
         </div>
         <div className={styles.inputComposerRow}>
           <textarea

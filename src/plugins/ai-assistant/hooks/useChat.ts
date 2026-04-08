@@ -8,6 +8,7 @@ interface UseChatOptions {
   messages: ChatMessage[];
   currentAgent: Agent | null;
   updateSessionMessages: (newMessages: ChatMessage[], targetSessionId?: string) => string;
+  enableReasoning: boolean;
   vm: any;
 }
 
@@ -57,6 +58,10 @@ Your current user speaks: ${navigator.language || "zh-CN"}. Use this language to
 You have tools to read blocks and write blocks. Use tools whenever necessary to fulfill the user's request.
 
 AVAILABLE TOOLS & HOW TO USE THEM:
+- listTargets: List all sprites/stage targets in the project.
+- getTopLevelScripts: Inspect the top-level scripts of a target before editing.
+- getScriptUCF: Read one exact top-level script by scriptId.
+- findBlocks: Locate candidate blocks by opcode, keyword, target, or script scope.
 - searchBlocks: Search for block opcodes by keywords.
 - getBlockInfo: Get exact parameters and field names for a specific opcode.
 - getAllPrimitiveBlocks: View all native Scratch opcodes and their text. Use this to quickly learn native blocks if needed.
@@ -69,14 +74,25 @@ AVAILABLE TOOLS & HOW TO USE THEM:
 - generateCodeFromUCF: Generate and insert Scratch blocks into the workspace.
 - replaceBlocksRangeByUCF: Replace a selected continuous block range with new UCF while preserving surrounding connections.
 
+ANNOTATED UCF RULES:
+- Read tools may return UCF with a line-end comment in the form // blockId: <id>.
+- These comments identify the statement block for that exact line.
+- Use these comments to choose the start and end block ids when calling replaceBlocksRangeByUCF.
+- Nested input/reporter blocks inside [] may not have blockId comments. If you need to edit them, rewrite the surrounding statement line or the whole local statement range.
+- Write tools accept UCF that still contains these comments; they will be ignored automatically.
+
 RULES:
 1. If the user does not explicitly request using an extension, directly use native Scratch blocks. Do not search for extensions first.
-2. Before generating custom blocks, always inspect existing workspace code with getWorkspaceUCF and getCustomBlocks when the task may involve procedure definitions or calls.
-3. If you need to create or call a custom block, prefer the existing procedures_* opcodes and make sure the proccode, argumentids, argumentnames, argumentdefaults, warp, isreporter, and isglobal fields stay consistent between definition and calls.
-4. If the workspace already contains a matching custom block definition, reuse its proccode and argument IDs exactly instead of inventing a new one.
-5. If you are unsure about an opcode, use searchBlocks, getBlockInfo, or getAllPrimitiveBlocks first.
-6. When the user message includes an attachment marked as editable-range, use the provided startBlockId/endBlockId to inspect and replace that exact range instead of rewriting unrelated blocks.
-7. If replaceBlocksRangeByUCF reports that boundary reconnection failed, do not assume the edit succeeded. Explain the limitation and avoid repeated blind retries.
+2. Before editing existing logic, prefer listTargets, getTopLevelScripts, getScriptUCF, and findBlocks to locate the exact script or block instead of blindly rewriting the whole workspace.
+3. Before generating custom blocks, always inspect existing workspace code with getWorkspaceUCF and getCustomBlocks when the task may involve procedure definitions or calls.
+4. If you need to edit one existing behavior, first narrow the scope to a specific target and top-level script, then read only that script before generating replacement UCF.
+5. When getScriptUCF or getBlocksRangeUCF returns annotated UCF, use the line-end blockId comments to identify the exact start and end block ids for replacement.
+6. Prefer replacing the smallest continuous statement range that satisfies the request.
+7. If you need to create or call a custom block, prefer the existing procedures_* opcodes and make sure the proccode, argumentids, argumentnames, argumentdefaults, warp, isreporter, and isglobal fields stay consistent between definition and calls.
+8. If the workspace already contains a matching custom block definition, reuse its proccode and argument IDs exactly instead of inventing a new one.
+9. If you are unsure about an opcode, use searchBlocks, getBlockInfo, or getAllPrimitiveBlocks first.
+10. When the user message includes an attachment marked as editable-range, use the provided startBlockId/endBlockId to inspect and replace that exact range instead of rewriting unrelated blocks.
+11. If replaceBlocksRangeByUCF reports that boundary reconnection failed, do not assume the edit succeeded. Explain the limitation and avoid repeated blind retries.
 
 STRICT UCF SYNTAX RULES FOR generateCodeFromUCF:
 1. Each connected block sequence MUST be separated by a newline (\n). Never use N:next=.
@@ -121,7 +137,7 @@ procedures_return |  |  | I:RETURN=[text | S | F:TEXT=111] | M:proccode=积木�
 
 data_addtolist | C:0:200 | F:LIST=ScratchList | I:ITEM=[procedures_call_with_return |  |  | I:arg1=[text | S | F:TEXT=111] | M:proccode=积木名称 %s,argumentids=arg1,warp=false,isreporter=true,isglobal=false] |`;
 
-export function useChat({ messages, currentAgent, updateSessionMessages, vm }: UseChatOptions) {
+export function useChat({ messages, currentAgent, updateSessionMessages, enableReasoning, vm }: UseChatOptions) {
   const [inputText, setInputText] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -135,6 +151,8 @@ export function useChat({ messages, currentAgent, updateSessionMessages, vm }: U
     }
 
     switch (functionName) {
+      case "findBlocks":
+        return aiTools[functionName](args);
       case "generateCodeFromUCF":
         return aiTools[functionName](args.ucfString, args.targetId, args.x, args.y);
       case "getExtensionBlocks":
@@ -144,8 +162,11 @@ export function useChat({ messages, currentAgent, updateSessionMessages, vm }: U
       case "getBlockInfo":
         return aiTools[functionName](args.opcode);
       case "cleanUpBlocks":
+      case "getTopLevelScripts":
       case "getWorkspaceUCF":
         return aiTools[functionName](args.targetId);
+      case "getScriptUCF":
+        return aiTools[functionName](args.scriptId, args.targetId);
       case "getCustomBlocks":
         return aiTools[functionName](args.targetId);
       case "getBlocksRangeUCF":
@@ -213,7 +234,15 @@ export function useChat({ messages, currentAgent, updateSessionMessages, vm }: U
       while (shouldContinue) {
         const requestMessages = currentMessages;
         const assistantMessageIndex = currentMessages.length;
-        currentMessages = [...currentMessages, { role: "assistant", content: "" }];
+        currentMessages = [
+          ...currentMessages,
+          {
+            role: "assistant",
+            content: "",
+            reasoning: "",
+            reasoningStartedAt: enableReasoning ? Date.now() : undefined,
+          },
+        ];
         updateSessionMessages(currentMessages, sessionId);
 
         const data = await providerAdapter.sendChatCompletion({
@@ -221,13 +250,37 @@ export function useChat({ messages, currentAgent, updateSessionMessages, vm }: U
           messages: [{ role: "system", content: SYSTEM_PROMPT }, ...buildRequestMessages(requestMessages)],
           tools: scratchToolSchemas,
           toolChoice: "auto",
+          enableReasoning,
           signal: abortControllerRef.current.signal,
+          onReasoningDelta: (delta) => {
+            currentMessages = currentMessages.map((message, index) =>
+              index === assistantMessageIndex
+                ? {
+                    ...message,
+                    reasoning: `${message.reasoning || ""}${delta}`,
+                    reasoningStartedAt: message.reasoningStartedAt || Date.now(),
+                  }
+                : message,
+            );
+            updateSessionMessages(currentMessages, sessionId);
+          },
           onTextDelta: (delta) => {
             currentMessages = currentMessages.map((message, index) =>
               index === assistantMessageIndex
                 ? {
                     ...message,
                     content: `${message.content}${delta}`,
+                  }
+                : message,
+            );
+            updateSessionMessages(currentMessages, sessionId);
+          },
+          onToolCallsDelta: (toolCalls) => {
+            currentMessages = currentMessages.map((message, index) =>
+              index === assistantMessageIndex
+                ? {
+                    ...message,
+                    tool_calls: toolCalls,
                   }
                 : message,
             );
@@ -242,6 +295,12 @@ export function useChat({ messages, currentAgent, updateSessionMessages, vm }: U
                 ...message,
                 ...responseMessage,
                 content: responseMessage.content || message.content,
+                reasoning: responseMessage.reasoning || message.reasoning,
+                reasoningStartedAt: message.reasoningStartedAt,
+                reasoningEndedAt:
+                  message.reasoningStartedAt && (responseMessage.reasoning || message.reasoning)
+                    ? Date.now()
+                    : message.reasoningEndedAt,
               }
             : message,
         );
@@ -296,7 +355,13 @@ export function useChat({ messages, currentAgent, updateSessionMessages, vm }: U
       if (err?.name === "AbortError") {
         const trimmedMessages = currentMessages.filter(
           (message, index) =>
-            !(index === currentMessages.length - 1 && message.role === "assistant" && !message.content),
+            !(
+              index === currentMessages.length - 1 &&
+              message.role === "assistant" &&
+              !message.content &&
+              !message.reasoning &&
+              !message.tool_calls?.length
+            ),
         );
         updateSessionMessages(trimmedMessages, sessionId);
         return;

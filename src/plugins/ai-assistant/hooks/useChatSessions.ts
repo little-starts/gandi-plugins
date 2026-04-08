@@ -1,6 +1,6 @@
-import { useState, useMemo, useEffect, useRef, useCallback } from "react";
-import useStorageInfo from "hooks/useStorageInfo";
+import { useState, useMemo, useEffect, useRef, useCallback, type MouseEvent } from "react";
 import { ChatMessage, ChatSession } from "../types";
+import { useStoredState } from "./useStoredState";
 
 const getSessionTitle = (messages: ChatMessage[]) => {
   const firstUserMessage = messages.find((message) => message.role === "user");
@@ -12,8 +12,8 @@ const getSessionTitle = (messages: ChatMessage[]) => {
 };
 
 export function useChatSessions(isNarrow: boolean) {
-  const [sessions, setSessions] = useStorageInfo<ChatSession[]>("AI_ASSISTANT_SESSIONS", []);
-  const [currentSessionId, setCurrentSessionId] = useStorageInfo<string>("AI_ASSISTANT_CURRENT_SESSION_ID", "");
+  const [sessions, setSessions] = useStoredState<ChatSession[]>("AI_ASSISTANT_SESSIONS", []);
+  const [currentSessionId, setCurrentSessionId] = useStoredState<string>("AI_ASSISTANT_CURRENT_SESSION_ID", "");
   const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const currentSessionIdRef = useRef(currentSessionId);
@@ -62,7 +62,7 @@ export function useChatSessions(isNarrow: boolean) {
     if (isNarrow) setShowHistoryModal(false);
   };
 
-  const handleDeleteSession = (id: string, e: React.MouseEvent) => {
+  const handleDeleteSession = (id: string, e: MouseEvent) => {
     e.stopPropagation();
     setSessions((previousSessions) => previousSessions.filter((session) => session.id !== id));
     if (currentSessionId === id) {

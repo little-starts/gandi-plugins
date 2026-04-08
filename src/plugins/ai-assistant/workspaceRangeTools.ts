@@ -1,4 +1,5 @@
 import { scratchToUCF, ucfToScratch } from "./ucf";
+import { stripAnnotatedUCFComments, toAnnotatedUCF } from "./annotatedUcf";
 
 const resolveTargetForRange = (vm: PluginContext["vm"], startBlockId: string, endBlockId: string) => {
   const target = vm.runtime.targets.find((item) => {
@@ -216,7 +217,12 @@ export const getBlocksRangeUCF = (
   const blocksArray = collectRangeRuntimeBlocks(target, result.rangeBlocks);
   return {
     success: true,
-    ucf: scratchToUCF(blocksArray),
+    ucf: toAnnotatedUCF([
+      {
+        blocks: blocksArray,
+        statementBlockIds: result.rangeBlocks.map((block) => block.id),
+      },
+    ]),
     blockCount: result.rangeBlocks.length,
     startBlockId,
     endBlockId,
@@ -271,7 +277,7 @@ export const replaceBlocksRangeByUCF = async (
   }
 
   try {
-    const newBlocksState = ucfToScratch(ucfString);
+    const newBlocksState = ucfToScratch(stripAnnotatedUCFComments(ucfString));
     if (!newBlocksState.length) {
       return { success: false, error: "Replacement UCF produced no blocks" };
     }

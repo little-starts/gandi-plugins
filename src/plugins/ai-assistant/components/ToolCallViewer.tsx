@@ -80,7 +80,6 @@ export const ToolCallViewer: React.FC<ToolCallViewerProps> = ({
           本轮调用了 {entries.length} 个工具
           {runningCount > 0 ? `，${runningCount} 个执行中` : ""}
           {errorCount > 0 ? `，${errorCount} 个失败` : ""}
-          {isGenerating && runningCount === 0 ? "，等待模型继续处理" : ""}
         </span>
       </button>
       {expanded ? (
