@@ -4,12 +4,17 @@ import styles from "../styles.less";
 import { Attachment, ChatMessage, ToolCall } from "../types";
 import { ToolCallViewer } from "./ToolCallViewer";
 import { MessageAttachments } from "./MessageAttachments";
+import ChevronRightIcon from "assets/icon-chevron-right.svg";
+import CopyIcon from "assets/icon-copy.svg";
+import UndoIcon from "assets/icon-undo.svg";
 
 interface ChatAreaProps {
   messages: ChatMessage[];
   isGenerating: boolean;
   vm: PluginContext["vm"];
   onOpenWorkspaceAttachment: (attachment: Attachment) => void;
+  onRestoreToUserMessage: (messageId: string, message: ChatMessage) => void;
+  hasSnapshot: (messageId: string) => boolean;
 }
 
 type AssistantSegment =
@@ -25,6 +30,7 @@ type AssistantSegment =
   | { type: "tools"; id: string; toolCalls: ToolCall[]; toolResults: ChatMessage[] };
 
 interface AssistantBubble {
+  sourceMessage: ChatMessage;
   segments: AssistantSegment[];
 }
 
@@ -33,17 +39,16 @@ interface ReasoningPanelState {
   hasAutoCollapsed: boolean;
 }
 
-const ChevronRightIcon = ({ expanded }: { expanded: boolean }) => (
-  <svg
-    width="12"
-    height="12"
-    viewBox="0 0 12 12"
-    fill="none"
-    aria-hidden="true"
-    style={{ transform: expanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.2s ease" }}
+const ReasoningChevron = ({ expanded }: { expanded: boolean }) => (
+  <span
+    style={{
+      display: "inline-flex",
+      transform: expanded ? "rotate(90deg)" : "rotate(0deg)",
+      transition: "transform 0.2s ease",
+    }}
   >
-    <path d="M4 2.5 7.5 6 4 9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
+    <ChevronRightIcon aria-hidden="true" />
+  </span>
 );
 
 const formatReasoningDuration = (startedAt?: number, endedAt?: number) => {
@@ -139,7 +144,7 @@ const collectAssistantBubbles = (messages: ChatMessage[], isGenerating: boolean)
         cursor++;
       }
 
-      items.push({ segments });
+      items.push({ sourceMessage: message, segments });
       index = cursor - 1;
       continue;
     }
@@ -150,7 +155,30 @@ const collectAssistantBubbles = (messages: ChatMessage[], isGenerating: boolean)
   return items;
 };
 
-export const ChatArea: React.FC<ChatAreaProps> = ({ messages, isGenerating, vm, onOpenWorkspaceAttachment }) => {
+const summarizeAssistantMessageForCopy = (item: AssistantBubble) =>
+  item.segments
+    .map((segment) => {
+      if (segment.type === "text") {
+        return segment.content;
+      }
+
+      if (segment.type === "tools") {
+        return `${segment.toolCalls.length}次工具调用`;
+      }
+
+      return "";
+    })
+    .filter(Boolean)
+    .join("\n\n");
+
+export const ChatArea: React.FC<ChatAreaProps> = ({
+  messages,
+  isGenerating,
+  vm,
+  onOpenWorkspaceAttachment,
+  onRestoreToUserMessage,
+  hasSnapshot,
+}) => {
   const displayItems = React.useMemo(() => collectAssistantBubbles(messages, isGenerating), [messages, isGenerating]);
   const scrollRef = React.useRef<HTMLDivElement | null>(null);
   const [isStickyToBottom, setIsStickyToBottom] = React.useState(true);
@@ -224,6 +252,11 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ messages, isGenerating, vm, 
     }));
   }, []);
 
+  const handleCopy = React.useCallback(async (text: string) => {
+    if (!text.trim()) return;
+    await navigator.clipboard.writeText(text);
+  }, []);
+
   return (
     <div className={styles.chatArea} ref={scrollRef} onScroll={handleScroll}>
       {displayItems.length === 0 ? (
@@ -238,10 +271,31 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ messages, isGenerating, vm, 
         displayItems.map((item, index) => {
           if ("role" in item) {
             return (
-              <div key={index} className={`${styles.messageRow} ${styles.userMessage}`}>
+              <div key={item.id || index} className={`${styles.messageRow} ${styles.userMessage}`}>
+                <div className={`${styles.messageActionRail} ${styles.messageActionRailHorizontal}`}>
+                  <button
+                    type="button"
+                    className={styles.messageActionButton}
+                    title="复制消息"
+                    aria-label="复制消息"
+                    onClick={() => void handleCopy(item.content)}
+                  >
+                    <CopyIcon aria-hidden="true" />
+                  </button>
+                  {hasSnapshot(item.id) ? (
+                    <button
+                      type="button"
+                      className={styles.messageActionButton}
+                      title="撤回到这里"
+                      aria-label="撤回到这里"
+                      onClick={() => onRestoreToUserMessage(item.id, item)}
+                    >
+                      <UndoIcon aria-hidden="true" />
+                    </button>
+                  ) : null}
+                </div>
                 <div className={styles.messageAvatar}>你</div>
                 <div className={`${styles.messageBubble} ${styles.messageBubbleUser}`}>
-                  <div className={styles.messageRoleLabel}>你的消息</div>
                   <pre className={styles.messageText}>{item.content}</pre>
                   {item.attachments?.length ? (
                     <MessageAttachments
@@ -256,10 +310,9 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ messages, isGenerating, vm, 
           }
 
           return (
-            <div key={index} className={`${styles.messageRow} ${styles.assistantMessage}`}>
+            <div key={item.sourceMessage.id || index} className={`${styles.messageRow} ${styles.assistantMessage}`}>
               <div className={styles.messageAvatar}>AI</div>
               <div className={`${styles.messageBubble} ${styles.messageBubbleAssistant}`}>
-                <div className={styles.messageRoleLabel}>助手回复</div>
                 <div className={styles.assistantSegments}>
                   {item.segments.map((segment) =>
                     segment.type === "text" ? (
@@ -279,7 +332,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ messages, isGenerating, vm, 
                               : "思考中..."}
                           </span>
                           <span className={styles.reasoningInlineArrow}>
-                            <ChevronRightIcon expanded={!reasoningPanels[segment.id]?.collapsed} />
+                            <ReasoningChevron expanded={!reasoningPanels[segment.id]?.collapsed} />
                           </span>
                         </button>
                         {!reasoningPanels[segment.id]?.collapsed ? (
@@ -298,6 +351,17 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ messages, isGenerating, vm, 
                     ),
                   )}
                 </div>
+              </div>
+              <div className={styles.messageActionRail}>
+                <button
+                  type="button"
+                  className={styles.messageActionButton}
+                  title="复制消息"
+                  aria-label="复制消息"
+                  onClick={() => void handleCopy(summarizeAssistantMessageForCopy(item))}
+                >
+                  <CopyIcon aria-hidden="true" />
+                </button>
               </div>
             </div>
           );

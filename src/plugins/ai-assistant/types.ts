@@ -38,6 +38,7 @@ export interface ToolCall {
 }
 
 export interface ChatMessage {
+  id: string;
   role: "user" | "assistant" | "tool" | "system";
   content: string;
   reasoning?: string;
@@ -47,6 +48,14 @@ export interface ChatMessage {
   tool_call_id?: string;
   name?: string;
   attachments?: Attachment[];
+}
+
+export interface SessionSnapshot {
+  messageId: string;
+  projectJson: string;
+  attachments: Attachment[];
+  inputText: string;
+  createdAt: number;
 }
 
 export interface RangeAttachmentMeta {

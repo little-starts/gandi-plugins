@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback, type MouseEvent } from "react";
-import { ChatMessage, ChatSession } from "../types";
+import { Attachment, ChatMessage, ChatSession, SessionSnapshot } from "../types";
 import { useStoredState } from "./useStoredState";
 
 const getSessionTitle = (messages: ChatMessage[]) => {
@@ -11,12 +11,13 @@ const getSessionTitle = (messages: ChatMessage[]) => {
   return rawTitle.length > 20 ? `${rawTitle.substring(0, 20)}...` : rawTitle;
 };
 
-export function useChatSessions(isNarrow: boolean) {
+export function useChatSessions(shouldAutoCollapseHistory: boolean) {
   const [sessions, setSessions] = useStoredState<ChatSession[]>("AI_ASSISTANT_SESSIONS", []);
   const [currentSessionId, setCurrentSessionId] = useStoredState<string>("AI_ASSISTANT_CURRENT_SESSION_ID", "");
   const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const currentSessionIdRef = useRef(currentSessionId);
+  const snapshotsRef = useRef<Record<string, SessionSnapshot[]>>({});
 
   useEffect(() => {
     currentSessionIdRef.current = currentSessionId;
@@ -31,13 +32,11 @@ export function useChatSessions(isNarrow: boolean) {
   );
 
   useEffect(() => {
-    if (isNarrow) {
+    if (shouldAutoCollapseHistory) {
       setIsLeftPanelOpen(false);
-    } else {
-      setIsLeftPanelOpen(true);
       setShowHistoryModal(false);
     }
-  }, [isNarrow]);
+  }, [shouldAutoCollapseHistory]);
 
   const currentSession = useMemo(() => {
     return sessions.find((s) => s.id === currentSessionId);
@@ -54,17 +53,18 @@ export function useChatSessions(isNarrow: boolean) {
 
   const handleNewChat = () => {
     setActiveSessionId("");
-    if (isNarrow) setShowHistoryModal(false);
+    if (shouldAutoCollapseHistory) setShowHistoryModal(false);
   };
 
   const handleSelectSession = (id: string) => {
     setActiveSessionId(id);
-    if (isNarrow) setShowHistoryModal(false);
+    if (shouldAutoCollapseHistory) setShowHistoryModal(false);
   };
 
   const handleDeleteSession = (id: string, e: MouseEvent) => {
     e.stopPropagation();
     setSessions((previousSessions) => previousSessions.filter((session) => session.id !== id));
+    delete snapshotsRef.current[id];
     if (currentSessionId === id) {
       setActiveSessionId("");
     }
@@ -113,6 +113,70 @@ export function useChatSessions(isNarrow: boolean) {
     [setActiveSessionId, setSessions],
   );
 
+  const appendSessionSnapshot = useCallback((snapshot: SessionSnapshot, targetSessionId?: string) => {
+    const sessionId = targetSessionId || currentSessionIdRef.current;
+    if (!sessionId) return;
+
+    const existingSnapshots = snapshotsRef.current[sessionId] || [];
+    snapshotsRef.current[sessionId] = [
+      ...existingSnapshots.filter((item) => item.messageId !== snapshot.messageId),
+      snapshot,
+    ];
+  }, []);
+
+  const hasSnapshot = useCallback((messageId: string) => {
+    const sessionId = currentSessionIdRef.current;
+    if (!sessionId) return false;
+    return Boolean((snapshotsRef.current[sessionId] || []).some((item) => item.messageId === messageId));
+  }, []);
+
+  const rollbackToMessage = useCallback(
+    (messageId: string, nextInputText: string, nextAttachments: Attachment[]) => {
+      const session = sessions.find((item) => item.id === currentSessionIdRef.current);
+      const sessionId = currentSessionIdRef.current;
+      if (!session) {
+        return null;
+      }
+
+      const messageIndex = session.messages.findIndex((message) => message.id === messageId);
+      if (messageIndex === -1) {
+        return null;
+      }
+
+      const snapshot = [...(snapshotsRef.current[sessionId] || [])]
+        .reverse()
+        .find((item) => item.messageId === messageId);
+      const keptMessages = session.messages.slice(0, messageIndex);
+      const updatedAt = Date.now();
+
+      setSessions((previousSessions) =>
+        previousSessions.map((item) =>
+          item.id === session.id
+            ? {
+                ...item,
+                title: getSessionTitle(keptMessages),
+                messages: keptMessages,
+                updatedAt,
+              }
+            : item,
+        ),
+      );
+
+      if (sessionId) {
+        snapshotsRef.current[sessionId] = (snapshotsRef.current[sessionId] || []).filter((entry) =>
+          keptMessages.some((message) => message.id === entry.messageId),
+        );
+      }
+
+      return {
+        snapshot,
+        inputText: nextInputText,
+        attachments: nextAttachments,
+      };
+    },
+    [sessions, setSessions],
+  );
+
   return {
     sessions,
     currentSessionId,
@@ -126,5 +190,8 @@ export function useChatSessions(isNarrow: boolean) {
     handleSelectSession,
     handleDeleteSession,
     updateSessionMessages,
+    appendSessionSnapshot,
+    hasSnapshot,
+    rollbackToMessage,
   };
 }

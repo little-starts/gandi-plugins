@@ -8,9 +8,21 @@ interface UseChatOptions {
   messages: ChatMessage[];
   currentAgent: Agent | null;
   updateSessionMessages: (newMessages: ChatMessage[], targetSessionId?: string) => string;
+  appendSessionSnapshot: (
+    snapshot: {
+      messageId: string;
+      projectJson: string;
+      attachments: Attachment[];
+      inputText: string;
+      createdAt: number;
+    },
+    targetSessionId?: string,
+  ) => void;
   enableReasoning: boolean;
   vm: any;
 }
+
+const createMessageId = () => `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
 const toProviderMessage = (message: ChatMessage, content: string) => ({
   role: message.role,
@@ -73,6 +85,7 @@ AVAILABLE TOOLS & HOW TO USE THEM:
 - cleanUpBlocks: Arrange the blocks neatly in the workspace.
 - generateCodeFromUCF: Generate and insert Scratch blocks into the workspace.
 - replaceBlocksRangeByUCF: Replace a selected continuous block range with new UCF while preserving surrounding connections.
+- replaceScriptByUCF: Replace an entire top-level script by scriptId with new UCF.
 
 ANNOTATED UCF RULES:
 - Read tools may return UCF with a line-end comment in the form // blockId: <id>.
@@ -86,13 +99,14 @@ RULES:
 2. Before editing existing logic, prefer listTargets, getTopLevelScripts, getScriptUCF, and findBlocks to locate the exact script or block instead of blindly rewriting the whole workspace.
 3. Before generating custom blocks, always inspect existing workspace code with getWorkspaceUCF and getCustomBlocks when the task may involve procedure definitions or calls.
 4. If you need to edit one existing behavior, first narrow the scope to a specific target and top-level script, then read only that script before generating replacement UCF.
-5. When getScriptUCF or getBlocksRangeUCF returns annotated UCF, use the line-end blockId comments to identify the exact start and end block ids for replacement.
-6. Prefer replacing the smallest continuous statement range that satisfies the request.
-7. If you need to create or call a custom block, prefer the existing procedures_* opcodes and make sure the proccode, argumentids, argumentnames, argumentdefaults, warp, isreporter, and isglobal fields stay consistent between definition and calls.
-8. If the workspace already contains a matching custom block definition, reuse its proccode and argument IDs exactly instead of inventing a new one.
-9. If you are unsure about an opcode, use searchBlocks, getBlockInfo, or getAllPrimitiveBlocks first.
-10. When the user message includes an attachment marked as editable-range, use the provided startBlockId/endBlockId to inspect and replace that exact range instead of rewriting unrelated blocks.
-11. If replaceBlocksRangeByUCF reports that boundary reconnection failed, do not assume the edit succeeded. Explain the limitation and avoid repeated blind retries.
+5. When you are rewriting most or all of one top-level script, prefer replaceScriptByUCF instead of manually extracting range boundaries.
+6. When getScriptUCF or getBlocksRangeUCF returns annotated UCF, use the line-end blockId comments to identify the exact start and end block ids for replacement.
+7. Prefer replacing the smallest continuous statement range that satisfies the request unless the whole script is changing.
+8. If you need to create or call a custom block, prefer the existing procedures_* opcodes and make sure the proccode, argumentids, argumentnames, argumentdefaults, warp, isreporter, and isglobal fields stay consistent between definition and calls.
+9. If the workspace already contains a matching custom block definition, reuse its proccode and argument IDs exactly instead of inventing a new one.
+10. If you are unsure about an opcode, use searchBlocks, getBlockInfo, or getAllPrimitiveBlocks first.
+11. When the user message includes an attachment marked as editable-range, use the provided startBlockId/endBlockId to inspect and replace that exact range instead of rewriting unrelated blocks.
+12. If replaceBlocksRangeByUCF reports that boundary reconnection failed, do not assume the edit succeeded. Explain the limitation and avoid repeated blind retries.
 
 STRICT UCF SYNTAX RULES FOR generateCodeFromUCF:
 1. Each connected block sequence MUST be separated by a newline (\n). Never use N:next=.
@@ -137,7 +151,14 @@ procedures_return |  |  | I:RETURN=[text | S | F:TEXT=111] | M:proccode=积木�
 
 data_addtolist | C:0:200 | F:LIST=ScratchList | I:ITEM=[procedures_call_with_return |  |  | I:arg1=[text | S | F:TEXT=111] | M:proccode=积木名称 %s,argumentids=arg1,warp=false,isreporter=true,isglobal=false] |`;
 
-export function useChat({ messages, currentAgent, updateSessionMessages, enableReasoning, vm }: UseChatOptions) {
+export function useChat({
+  messages,
+  currentAgent,
+  updateSessionMessages,
+  appendSessionSnapshot,
+  enableReasoning,
+  vm,
+}: UseChatOptions) {
   const [inputText, setInputText] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -173,6 +194,8 @@ export function useChat({ messages, currentAgent, updateSessionMessages, enableR
         return aiTools[functionName](args.startBlockId, args.endBlockId);
       case "replaceBlocksRangeByUCF":
         return aiTools[functionName](args.startBlockId, args.endBlockId, args.ucfString);
+      case "replaceScriptByUCF":
+        return aiTools[functionName](args.scriptId, args.ucfString);
       default:
         return aiTools[functionName]();
     }
@@ -195,7 +218,11 @@ export function useChat({ messages, currentAgent, updateSessionMessages, enableR
     if (!currentAgent) {
       updateSessionMessages([
         ...messages,
-        { role: "assistant", content: "Error: 当前没有可用的 AI Agent，请先在设置中添加或恢复一个 Agent。" },
+        {
+          id: createMessageId(),
+          role: "assistant",
+          content: "Error: 当前没有可用的 AI Agent，请先在设置中添加或恢复一个 Agent。",
+        },
       ]);
       return;
     }
@@ -204,6 +231,7 @@ export function useChat({ messages, currentAgent, updateSessionMessages, enableR
       updateSessionMessages([
         ...messages,
         {
+          id: createMessageId(),
           role: "assistant",
           content: `Error: 当前 Provider '${currentAgent.provider}' 暂未接入。请改用 OpenAI、智谱、DeepSeek 或 Custom(OpenAI-compatible)。`,
         },
@@ -212,6 +240,7 @@ export function useChat({ messages, currentAgent, updateSessionMessages, enableR
     }
 
     const newMessage: ChatMessage = {
+      id: createMessageId(),
       role: "user",
       content: inputText,
       attachments,
@@ -220,6 +249,16 @@ export function useChat({ messages, currentAgent, updateSessionMessages, enableR
     let sessionId = "";
 
     sessionId = updateSessionMessages(newMessages);
+    appendSessionSnapshot(
+      {
+        messageId: newMessage.id,
+        projectJson: typeof vm?.toJSON === "function" ? vm.toJSON() : "",
+        attachments,
+        inputText,
+        createdAt: Date.now(),
+      },
+      sessionId,
+    );
     setInputText("");
     setAttachments([]);
     setIsGenerating(true);
@@ -237,6 +276,7 @@ export function useChat({ messages, currentAgent, updateSessionMessages, enableR
         currentMessages = [
           ...currentMessages,
           {
+            id: createMessageId(),
             role: "assistant",
             content: "",
             reasoning: "",
@@ -247,7 +287,10 @@ export function useChat({ messages, currentAgent, updateSessionMessages, enableR
 
         const data = await providerAdapter.sendChatCompletion({
           agent: currentAgent,
-          messages: [{ role: "system", content: SYSTEM_PROMPT }, ...buildRequestMessages(requestMessages)],
+          messages: [
+            { id: createMessageId(), role: "system", content: SYSTEM_PROMPT },
+            ...buildRequestMessages(requestMessages),
+          ],
           tools: scratchToolSchemas,
           toolChoice: "auto",
           enableReasoning,
@@ -314,6 +357,7 @@ export function useChat({ messages, currentAgent, updateSessionMessages, enableR
             currentMessages = [
               ...currentMessages,
               {
+                id: createMessageId(),
                 role: "tool",
                 tool_call_id: toolCall.id,
                 name: functionName,
@@ -339,6 +383,7 @@ export function useChat({ messages, currentAgent, updateSessionMessages, enableR
             currentMessages = [
               ...currentMessages.slice(0, -1),
               {
+                id: createMessageId(),
                 role: "tool",
                 tool_call_id: toolCall.id,
                 name: functionName,
@@ -366,7 +411,10 @@ export function useChat({ messages, currentAgent, updateSessionMessages, enableR
         updateSessionMessages(trimmedMessages, sessionId);
         return;
       }
-      updateSessionMessages([...currentMessages, { role: "assistant", content: `Error: ${err.message}` }], sessionId);
+      updateSessionMessages(
+        [...currentMessages, { id: createMessageId(), role: "assistant", content: `Error: ${err.message}` }],
+        sessionId,
+      );
     } finally {
       abortControllerRef.current = null;
       setIsGenerating(false);

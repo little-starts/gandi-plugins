@@ -61,7 +61,7 @@ const annotateSingleSequence = (ucf: string, blockIds: string[]) => {
 
 export const toAnnotatedUCF = (sequences: Array<{ blocks: any[]; statementBlockIds: string[] }>) =>
   sequences
-    .map(({ blocks, statementBlockIds }) => annotateSingleSequence(scratchToUCF(blocks), statementBlockIds))
+    .map(({ blocks, statementBlockIds }) => annotateSingleSequence(toModelUCF(blocks), statementBlockIds))
     .join("\n\n");
 
 export const stripAnnotatedUCFComments = (ucf: string) =>
@@ -69,3 +69,16 @@ export const stripAnnotatedUCFComments = (ucf: string) =>
     .split("\n")
     .map((line) => line.replace(/\s*\/\/\s*blockId:\s*[^\s]+\s*$/i, ""))
     .join("\n");
+
+export const toModelUCF = (blocks: any[]) =>
+  scratchToUCF(blocks)
+    .replace(/=B\[(.*?)\]S\[(.*?)\]/g, "=[$1]")
+    .replace(/=\s+/g, "=")
+    .replace(/,\s+/g, ", ");
+
+export const normalizeModelUCF = (ucf: string) =>
+  stripAnnotatedUCFComments(ucf)
+    .replace(/=\s+B\s*\[/g, "=B[")
+    .replace(/\]\s*S\s*\[/g, "]S[")
+    .replace(/[ \t]+$/gm, "")
+    .trim();

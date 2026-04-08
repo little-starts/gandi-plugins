@@ -1,6 +1,6 @@
 import { scratchToUCF, ucfToScratch } from "./ucf";
-import { stripAnnotatedUCFComments, toAnnotatedUCF } from "./annotatedUcf";
-import { getBlocksRangeUCF, replaceBlocksRangeByUCF } from "./workspaceRangeTools";
+import { normalizeModelUCF, toAnnotatedUCF } from "./annotatedUcf";
+import { getBlocksRangeUCF, replaceBlocksRangeByUCF, replaceScriptByUCF } from "./workspaceRangeTools";
 
 // This file contains tools for the AI assistant to interact with Scratch.
 
@@ -146,6 +146,16 @@ export class AITools {
     procedures_call_with_return: "调用自定义积木 [PROCEDURE] 并返回（PROCEDURE：string）",
   };
 
+  static BlockSearchAliases: Record<string, string[]> = {
+    event_whenflagclicked: ["当绿旗被点击", "绿旗", "开始", "启动"],
+    event_whenbroadcastreceived: ["当接收到广播", "接收到广播", "收到广播", "广播触发"],
+    event_broadcast: ["广播", "发送广播", "广播消息"],
+    event_broadcastandwait: ["广播并等待", "发送广播并等待"],
+    procedures_definition: ["自定义积木定义", "定义积木", "定义函数"],
+    procedures_call: ["调用自定义积木", "调用函数", "执行自定义积木"],
+    procedures_call_with_return: ["调用自定义积木并返回", "返回值积木", "返回值函数"],
+  };
+
   vm: any;
 
   constructor(vm: any) {
@@ -263,6 +273,10 @@ export class AITools {
     return keywords.every((item) => haystack.includes(item));
   }
 
+  private _getSearchTextForOpcode(opcode: string) {
+    return [AITools.AllBlockInfo[opcode] || "", ...(AITools.BlockSearchAliases[opcode] || [])].join(" ");
+  }
+
   listTargets() {
     const targets = Array.isArray(this.vm.runtime?.targets) ? this.vm.runtime.targets : [];
     return targets.map((target: any) => ({
@@ -349,7 +363,20 @@ export class AITools {
           .map((field: any) => this._normalizeBlockText(field?.value))
           .filter(Boolean)
           .join(" ");
-        const textCandidate = [block.opcode, AITools.AllBlockInfo[block.opcode] || "", fieldsText].join(" ");
+        const procedureText = [
+          block.mutation?.proccode,
+          block.mutation?.argumentnames,
+          block.mutation?.argumentdefaults,
+        ]
+          .map((value: any) => this._normalizeBlockText(value))
+          .filter(Boolean)
+          .join(" ");
+        const textCandidate = [
+          block.opcode,
+          this._getSearchTextForOpcode(block.opcode),
+          fieldsText,
+          procedureText,
+        ].join(" ");
         if (!this._matchKeyword(textCandidate, keyword)) {
           continue;
         }
@@ -455,7 +482,7 @@ export class AITools {
     const matches = [];
 
     for (const [opcode, rawText] of Object.entries(blockIds)) {
-      const text = String(rawText || "").toLowerCase();
+      const text = [String(rawText || ""), ...(AITools.BlockSearchAliases[opcode] || [])].join(" ").toLowerCase();
       const opcodeLower = opcode.toLowerCase();
 
       // 检查是否所有关键词都被包含在内
@@ -617,6 +644,10 @@ export class AITools {
     );
   }
 
+  async replaceScriptByUCF(scriptId: string, ucfString: string) {
+    return replaceScriptByUCF(this.vm, window.Blockly.getMainWorkspace() as Blockly.WorkspaceSvg, scriptId, ucfString);
+  }
+
   async generateCodeFromUCF(ucfString: string, targetId?: string, x?: number, y?: number) {
     const target = targetId ? this.vm.runtime.getTargetById(targetId) : this.vm.editingTarget;
     if (!target) {
@@ -629,7 +660,7 @@ export class AITools {
     console.log("[AI Tool Call] generateCodeFromUCF started. UCF String:", ucfString);
     let newBlocks;
     try {
-      newBlocks = ucfToScratch(stripAnnotatedUCFComments(ucfString));
+      newBlocks = ucfToScratch(normalizeModelUCF(ucfString));
       console.log("[AI Tool Call] Parsed blocks array:", newBlocks);
     } catch (e) {
       console.error("[AI Tool Call] Error parsing UCF string:", e);

@@ -4,30 +4,10 @@ import { parseLocalAttachment } from "../attachments";
 import { Attachment } from "../types";
 import { AttachmentPreviewModal } from "./AttachmentPreviewModal";
 import { getAttachmentDisplayName } from "../attachmentUtils";
-
-const SendIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-    <path
-      d="M2.2 13.1 13.7 8 2.2 2.9l1.4 4.1 5.1 1-5.1 1-1.4 4.1Z"
-      fill="currentColor"
-      stroke="currentColor"
-      strokeLinejoin="round"
-      strokeWidth="0.5"
-    />
-  </svg>
-);
-
-const StopIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-    <rect x="3" y="3" width="8" height="8" rx="2" fill="currentColor" />
-  </svg>
-);
-
-const ChevronRightIcon = () => (
-  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-    <path d="M4 2.5 7.5 6 4 9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
+import SendIcon from "assets/icon-send.svg";
+import StopIcon from "assets/icon-stop.svg";
+import ChevronRightIcon from "assets/icon-chevron-right.svg";
+import ComposeExpandIcon from "assets/icon-compose-expand.svg";
 
 interface InputAreaProps {
   inputText: string;
@@ -43,6 +23,8 @@ interface InputAreaProps {
   onToggleReasoning: () => void;
   onOpenAttachment: (attachment: Attachment) => void;
   isGenerating: boolean;
+  isExpanded: boolean;
+  onToggleExpanded: () => void;
   vm: PluginContext["vm"];
 }
 
@@ -60,6 +42,8 @@ export const InputArea: React.FC<InputAreaProps> = ({
   onToggleReasoning,
   onOpenAttachment,
   isGenerating,
+  isExpanded,
+  onToggleExpanded,
   vm,
 }) => {
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -96,7 +80,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
   };
 
   return (
-    <div className={styles.inputArea}>
+    <div className={`${styles.inputArea} ${isExpanded ? styles.inputAreaExpanded : ""}`}>
       {attachments.length > 0 ? (
         <div className={styles.attachments}>
           {attachments.map((attachment) => (
@@ -146,73 +130,119 @@ export const InputArea: React.FC<InputAreaProps> = ({
       ) : null}
       <div className={styles.inputBox}>
         <div className={styles.inputTopRow}>
-          <div className={styles.inputTools}>
-            <button
-              type="button"
-              className={`${styles.toolButton} ${enableReasoning ? styles.toolButtonActive : ""}`}
-              onClick={onToggleReasoning}
-              title="开启或关闭思考"
-            >
-              思考
-            </button>
-            <button
-              type="button"
-              className={styles.toolButton}
-              onClick={isSelectingBlocks ? onCancelBlockSelection : onStartBlockSelection}
-              title="选择积木片段"
-            >
-              {isSelectingBlocks ? "取消框选" : "选择积木"}
-            </button>
-            <button
-              type="button"
-              className={styles.toolButton}
-              onClick={() => fileInputRef.current?.click()}
-              title="导入本地附件"
-            >
-              添加文件
-            </button>
+          <div className={styles.inputToolsScroller}>
+            <div className={styles.inputTools}>
+              <button
+                type="button"
+                className={`${styles.toolButton} ${enableReasoning ? styles.toolButtonActive : ""}`}
+                onClick={onToggleReasoning}
+                title="开启或关闭思考"
+              >
+                思考
+              </button>
+              <button
+                type="button"
+                className={styles.toolButton}
+                onClick={isSelectingBlocks ? onCancelBlockSelection : onStartBlockSelection}
+                title="选择积木片段"
+              >
+                {isSelectingBlocks ? "取消框选" : "选择积木"}
+              </button>
+              <button
+                type="button"
+                className={styles.toolButton}
+                onClick={() => fileInputRef.current?.click()}
+                title="导入本地附件"
+              >
+                添加文件
+              </button>
+            </div>
           </div>
           <div className={styles.inputHint}>
-            <span>Enter 发送，Shift + Enter 换行</span>
+            <span>{isExpanded ? "Ctrl+Enter 发送，Enter 换行" : "Enter 发送，Shift + Enter 换行"}</span>
             <span className={styles.inputHintChevron}>
               <ChevronRightIcon />
             </span>
           </div>
         </div>
         <div className={styles.inputComposerRow}>
-          <textarea
-            className={styles.composerTextarea}
-            placeholder="输入消息、修改需求或粘贴上下文..."
-            value={inputText}
-            onChange={(event) => setInputText(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && !event.shiftKey) {
-                event.preventDefault();
-                onSend();
-              }
-            }}
-          />
-          {isGenerating ? (
+          <div className={styles.composerTextareaWrap}>
+            <textarea
+              className={`${styles.composerTextarea} ${isExpanded ? styles.composerTextareaExpanded : ""}`}
+              placeholder="输入消息、修改需求或粘贴上下文..."
+              value={inputText}
+              onChange={(event) => setInputText(event.target.value)}
+              onKeyDown={(event) => {
+                if (isExpanded) {
+                  if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+                    event.preventDefault();
+                    onSend();
+                  }
+                  return;
+                }
+
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
+                  onSend();
+                }
+              }}
+            />
             <button
               type="button"
-              onClick={onStopGenerating}
-              className={`${styles.primaryButton} ${styles.iconButton} ${styles.stopButton}`}
-              title="停止生成"
-              aria-label="停止生成"
+              className={styles.composerExpandButton}
+              onClick={onToggleExpanded}
+              title={isExpanded ? "退出全屏输入" : "展开输入框"}
+              aria-label={isExpanded ? "退出全屏输入" : "展开输入框"}
             >
-              <StopIcon />
+              <ComposeExpandIcon aria-hidden="true" />
             </button>
-          ) : (
-            <button
-              type="button"
-              onClick={onSend}
-              className={`${styles.primaryButton} ${styles.iconButton}`}
-              title="发送"
-              aria-label="发送"
-            >
-              <SendIcon />
-            </button>
-          )}
+            {isExpanded ? (
+              isGenerating ? (
+                <button
+                  type="button"
+                  onClick={onStopGenerating}
+                  className={`${styles.primaryButton} ${styles.expandedComposerSendButton} ${styles.stopButton}`}
+                  title="停止生成"
+                  aria-label="停止生成"
+                >
+                  <StopIcon />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onSend}
+                  className={`${styles.primaryButton} ${styles.expandedComposerSendButton}`}
+                  title="发送"
+                  aria-label="发送"
+                >
+                  <SendIcon />
+                </button>
+              )
+            ) : null}
+          </div>
+          {!isExpanded ? (
+            isGenerating ? (
+              <button
+                type="button"
+                onClick={onStopGenerating}
+                className={`${styles.primaryButton} ${styles.iconButton} ${styles.stopButton}`}
+                title="停止生成"
+                aria-label="停止生成"
+              >
+                <StopIcon />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={onSend}
+                className={`${styles.primaryButton} ${styles.iconButton}`}
+                title="发送"
+                aria-label="发送"
+              >
+                <SendIcon />
+              </button>
+            )
+          ) : null}
         </div>
       </div>
       <input

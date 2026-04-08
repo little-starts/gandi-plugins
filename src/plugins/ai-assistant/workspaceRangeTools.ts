@@ -1,5 +1,5 @@
 import { scratchToUCF, ucfToScratch } from "./ucf";
-import { stripAnnotatedUCFComments, toAnnotatedUCF } from "./annotatedUcf";
+import { normalizeModelUCF, toAnnotatedUCF } from "./annotatedUcf";
 
 const resolveTargetForRange = (vm: PluginContext["vm"], startBlockId: string, endBlockId: string) => {
   const target = vm.runtime.targets.find((item) => {
@@ -30,6 +30,25 @@ const getContinuousChainFromState = (target: Scratch.RenderTarget | null, topBlo
     current = current.next ? getBlockStateById(target, current.next) : null;
   }
   return chain;
+};
+
+const getScriptBoundaryIds = (target: Scratch.RenderTarget | null, scriptId: string) => {
+  const topBlockId = getTopBlockIdFromState(target, scriptId);
+  if (!topBlockId || topBlockId !== scriptId) {
+    return { success: false, error: "Script not found or is not a top-level script" };
+  }
+
+  const chain = getContinuousChainFromState(target, topBlockId);
+  if (!chain.length) {
+    return { success: false, error: "Script chain is empty" };
+  }
+
+  return {
+    success: true,
+    startBlockId: chain[0].id,
+    endBlockId: chain[chain.length - 1].id,
+    blockCount: chain.length,
+  };
 };
 
 const collectRangeRuntimeBlocks = (target: Scratch.RenderTarget | null, selectedBlocks: any[]) => {
@@ -202,6 +221,19 @@ const resolveVariableReferences = (vm: PluginContext["vm"], workspace: Blockly.W
   });
 };
 
+const collectTopLevelBlockIds = (workspace: Blockly.WorkspaceSvg) =>
+  workspace
+    .getTopBlocks(false)
+    .map((block) => block.id)
+    .sort();
+
+const buildFailureResult = (error: string, stage: string, diagnostics: Record<string, unknown> = {}) => ({
+  success: false,
+  error,
+  stage,
+  diagnostics,
+});
+
 export const getBlocksRangeUCF = (
   vm: PluginContext["vm"],
   _workspace: Blockly.WorkspaceSvg,
@@ -244,7 +276,10 @@ export const replaceBlocksRangeByUCF = async (
     editingTargetId: vm.editingTarget?.id || null,
   });
   if (!target) {
-    return { success: false, error: "Range blocks not found in runtime targets" };
+    return buildFailureResult("Range blocks not found in runtime targets", "resolve_target", {
+      startBlockId,
+      endBlockId,
+    });
   }
 
   if (vm.editingTarget?.id !== target.id) {
@@ -254,11 +289,17 @@ export const replaceBlocksRangeByUCF = async (
   }
 
   const workspace = _workspace || (window.Blockly.getMainWorkspace() as Blockly.WorkspaceSvg);
+  const topLevelBefore = collectTopLevelBlockIds(workspace);
 
   const startBlock = workspace.getBlockById(startBlockId) as Blockly.BlockSvg | null;
   const endBlock = workspace.getBlockById(endBlockId) as Blockly.BlockSvg | null;
   if (!startBlock || !endBlock) {
-    return { success: false, error: "Range blocks not found in current workspace" };
+    return buildFailureResult("Range blocks not found in current workspace", "resolve_workspace_blocks", {
+      startBlockId,
+      endBlockId,
+      hasStartBlock: Boolean(startBlock),
+      hasEndBlock: Boolean(endBlock),
+    });
   }
 
   const previousBlockId = startBlock.previousConnection?.targetConnection?.sourceBlock_?.id || null;
@@ -273,17 +314,33 @@ export const replaceBlocksRangeByUCF = async (
     collecting = collecting.getNextBlock() as Blockly.BlockSvg | null;
   }
   if (!blocksToDelete.length || blocksToDelete[blocksToDelete.length - 1]?.id !== endBlockId) {
-    return { success: false, error: "Selected range is not a continuous next-chain in workspace" };
+    return buildFailureResult("Selected range is not a continuous next-chain in workspace", "resolve_range", {
+      startBlockId,
+      endBlockId,
+      visitedBlockIds: blocksToDelete.map((block) => block.id),
+      breakAtBlockId: blocksToDelete[blocksToDelete.length - 1]?.id || null,
+    });
   }
 
   try {
-    const newBlocksState = ucfToScratch(stripAnnotatedUCFComments(ucfString));
+    const newBlocksState = ucfToScratch(normalizeModelUCF(ucfString));
     if (!newBlocksState.length) {
-      return { success: false, error: "Replacement UCF produced no blocks" };
+      return buildFailureResult("Replacement UCF produced no blocks", "parse_replacement", {
+        startBlockId,
+        endBlockId,
+      });
     }
     const topLevelBlocks = newBlocksState.filter((blockState) => blockState.topLevel);
     if (topLevelBlocks.length !== 1) {
-      return { success: false, error: "Replacement UCF must contain exactly one top-level stack" };
+      return buildFailureResult(
+        "Replacement UCF must contain exactly one top-level stack",
+        "validate_replacement_topology",
+        {
+          startBlockId,
+          endBlockId,
+          topLevelBlockCount: topLevelBlocks.length,
+        },
+      );
     }
     const topLevelBlockState = topLevelBlocks[0];
     topLevelBlockState.x = startXY.x;
@@ -326,7 +383,11 @@ export const replaceBlocksRangeByUCF = async (
       insertedBlock = workspace.getBlockById(topLevelBlockState.id) as Blockly.BlockSvg | null;
     }
     if (!insertedBlock) {
-      return { success: false, error: "Inserted block not found" };
+      return buildFailureResult("Inserted block not found", "locate_inserted_block", {
+        startBlockId,
+        endBlockId,
+        insertedTopBlockId: topLevelBlockState.id,
+      });
     }
 
     let reconnectedPrevious = false;
@@ -367,10 +428,43 @@ export const replaceBlocksRangeByUCF = async (
     const requiresPreviousReconnect = Boolean(previousBlockId);
     const requiresNextReconnect = Boolean(nextBlockId);
     if ((requiresPreviousReconnect && !reconnectedPrevious) || (requiresNextReconnect && !reconnectedNext)) {
-      return {
-        success: false,
-        error: "Replacement inserted new blocks but failed to reconnect the range boundaries safely",
-      };
+      insertedBlock.dispose(false, true);
+      return buildFailureResult(
+        "Replacement inserted new blocks but failed to reconnect the range boundaries safely",
+        "reconnect_boundaries",
+        {
+          startBlockId,
+          endBlockId,
+          previousBlockId,
+          nextBlockId,
+          insertedTopBlockId: insertedBlock.id,
+          lastInsertedBlockId: lastInsertedBlock.id,
+          reconnectedPrevious,
+          reconnectedNext,
+          visitedDeletedBlockIds: blocksToDelete.map((block) => block.id),
+        },
+      );
+    }
+
+    const topLevelAfter = collectTopLevelBlockIds(workspace);
+    const orphanTopLevelBlockIds = topLevelAfter.filter(
+      (blockId) => !topLevelBefore.includes(blockId) && blockId !== insertedBlock?.id,
+    );
+
+    if (orphanTopLevelBlockIds.length > 0) {
+      insertedBlock.dispose(false, true);
+      return buildFailureResult(
+        "Replacement created unexpected top-level orphan blocks",
+        "validate_workspace_after_replace",
+        {
+          startBlockId,
+          endBlockId,
+          insertedTopBlockId: insertedBlock.id,
+          orphanTopLevelBlockIds,
+          topLevelBefore,
+          topLevelAfter,
+        },
+      );
     }
 
     return {
@@ -379,13 +473,54 @@ export const replaceBlocksRangeByUCF = async (
       blockCount: newBlocksState.length,
       reconnectedPrevious,
       reconnectedNext,
+      diagnostics: {
+        previousBlockId,
+        nextBlockId,
+        lastInsertedBlockId: lastInsertedBlock.id,
+        orphanTopLevelBlockIds,
+        topLevelBefore,
+        topLevelAfter,
+      },
     };
   } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Failed to replace block range",
-    };
+    return buildFailureResult(error instanceof Error ? error.message : "Failed to replace block range", "exception", {
+      startBlockId,
+      endBlockId,
+    });
   } finally {
     window.Blockly.Events.setGroup(false);
   }
+};
+
+export const replaceScriptByUCF = async (
+  vm: PluginContext["vm"],
+  workspace: Blockly.WorkspaceSvg,
+  scriptId: string,
+  ucfString: string,
+) => {
+  const target = vm.runtime.targets.find((item) => item.blocks?._blocks?.[scriptId]) || null;
+  if (!target) {
+    return buildFailureResult("Script not found in runtime targets", "resolve_script_target", { scriptId });
+  }
+
+  const boundary = getScriptBoundaryIds(target, scriptId);
+  if (!boundary.success) {
+    return buildFailureResult(boundary.error, "resolve_script_boundaries", {
+      scriptId,
+      targetId: target.id,
+    });
+  }
+
+  const result = await replaceBlocksRangeByUCF(vm, workspace, boundary.startBlockId, boundary.endBlockId, ucfString);
+  return {
+    ...result,
+    diagnostics: {
+      scriptId,
+      targetId: target.id,
+      startBlockId: boundary.startBlockId,
+      endBlockId: boundary.endBlockId,
+      scriptBlockCount: boundary.blockCount,
+      ...(result.diagnostics || {}),
+    },
+  };
 };

@@ -1,8 +1,10 @@
 import { Agent, ChatMessage, ToolCall } from "./types";
 
+type ProviderMessage = Record<string, unknown>;
+
 interface ChatCompletionRequest {
   agent: Agent;
-  messages: ChatMessage[];
+  messages: ProviderMessage[];
   tools?: unknown[];
   toolChoice?: string;
   enableReasoning?: boolean;

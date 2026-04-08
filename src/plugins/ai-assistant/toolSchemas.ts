@@ -250,6 +250,27 @@ export const scratchToolSchemas = [
   {
     type: "function",
     function: {
+      name: "replaceScriptByUCF",
+      description: "Replace an entire top-level script by scriptId with new UCF.",
+      parameters: {
+        type: "object",
+        properties: {
+          scriptId: {
+            type: "string",
+            description: "The top-level script ID to replace.",
+          },
+          ucfString: {
+            type: "string",
+            description: "The replacement UCF for the whole script.",
+          },
+        },
+        required: ["scriptId", "ucfString"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "generateCodeFromUCF",
       description: "Generate and insert Scratch blocks from UCF code into the workspace.",
       parameters: {

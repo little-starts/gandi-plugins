@@ -3,7 +3,7 @@ import ReactDOM from "react-dom";
 import styles from "./styles.less";
 import Tooltip from "components/Tooltip";
 import ExpansionBox, { ExpansionRect } from "components/ExpansionBox";
-import useStorageInfo from "hooks/useStorageInfo";
+import { useStoredState } from "./hooks/useStoredState";
 import { registerContextMenu } from "./contextMenu";
 import { AIAssistantIcon } from "./components/AIAssistantIcon";
 import { HistoryPanel } from "./components/HistoryPanel";
@@ -17,7 +17,6 @@ import { useAttachmentInteraction } from "./hooks/useAttachmentInteraction";
 import { useBlockRangeSelection } from "./hooks/useBlockRangeSelection";
 import { useChatSessions } from "./hooks/useChatSessions";
 import { useChat } from "./hooks/useChat";
-import { useStoredState } from "./hooks/useStoredState";
 import { Attachment } from "./types";
 import { getAttachmentDisplayName } from "./attachmentUtils";
 
@@ -31,17 +30,22 @@ const DEFAULT_CONTAINER_INFO = {
 const AIAssistant: React.FC<PluginContext> = ({ vm, workspace }) => {
   const [visible, setVisible] = React.useState(false);
   const [isAgentMenuOpen, setIsAgentMenuOpen] = React.useState(false);
+  const [isComposerExpanded, setIsComposerExpanded] = React.useState(false);
   const containerRef = React.useRef(null);
   const agentMenuRef = React.useRef<HTMLDivElement | null>(null);
   const [enableReasoning, setEnableReasoning] = useStoredState<boolean>("AI_ASSISTANT_ENABLE_REASONING", false);
 
-  const [containerInfo, setContainerInfo] = useStorageInfo<ExpansionRect>(
+  const [containerInfo, setContainerInfo] = useStoredState<ExpansionRect>(
     "AI_ASSISTANT_CONTAINER_INFO",
     DEFAULT_CONTAINER_INFO,
   );
 
   const containerInfoRef = React.useRef(containerInfo);
-  const isNarrow = containerInfo.width < 600;
+  const useDrawerHistory = containerInfo.width < 760;
+
+  React.useEffect(() => {
+    containerInfoRef.current = containerInfo;
+  }, [containerInfo]);
 
   // Use custom hooks for complex logic
   const {
@@ -69,13 +73,17 @@ const AIAssistant: React.FC<PluginContext> = ({ vm, workspace }) => {
     handleSelectSession,
     handleDeleteSession,
     updateSessionMessages,
-  } = useChatSessions(isNarrow);
+    appendSessionSnapshot,
+    hasSnapshot,
+    rollbackToMessage,
+  } = useChatSessions(useDrawerHistory);
 
   const { inputText, setInputText, isGenerating, attachments, setAttachments, handleSend, handleStopGenerating } =
     useChat({
       messages,
       currentAgent,
       updateSessionMessages,
+      appendSessionSnapshot,
       enableReasoning,
       vm,
     });
@@ -111,9 +119,37 @@ const AIAssistant: React.FC<PluginContext> = ({ vm, workspace }) => {
     setVisible(false);
   };
 
-  const handleSizeChange = React.useCallback((value: ExpansionRect) => {
-    containerInfoRef.current = value;
-  }, []);
+  const handleRestoreToUserMessage = React.useCallback(
+    async (messageId: string, message: { content: string; attachments?: Attachment[] }) => {
+      const result = rollbackToMessage(messageId, message.content, message.attachments || []);
+      if (!result) {
+        return;
+      }
+
+      setInputText(result.inputText);
+      setAttachments(result.attachments);
+
+      if (result.snapshot?.projectJson) {
+        try {
+          const projectData = JSON.parse(result.snapshot.projectJson);
+          if (typeof vm?.loadProject === "function") {
+            await vm.loadProject(projectData);
+          }
+        } catch (error) {
+          console.error("[AI Assistant] Failed to restore snapshot", error);
+        }
+      }
+    },
+    [rollbackToMessage, setAttachments, setInputText, vm],
+  );
+
+  const handleSizeChange = React.useCallback(
+    (value: ExpansionRect) => {
+      containerInfoRef.current = value;
+      setContainerInfo(value);
+    },
+    [setContainerInfo],
+  );
 
   const pluginsWrapper = document.querySelector(".plugins-wrapper");
 
@@ -198,7 +234,7 @@ const AIAssistant: React.FC<PluginContext> = ({ vm, workspace }) => {
           >
             <div className={styles.container}>
               {/* Left Panel */}
-              {!isNarrow && isLeftPanelOpen && (
+              {!useDrawerHistory && isLeftPanelOpen && (
                 <HistoryPanel
                   sessions={sessions}
                   currentSessionId={currentSessionId}
@@ -213,73 +249,54 @@ const AIAssistant: React.FC<PluginContext> = ({ vm, workspace }) => {
                 <div className={styles.header}>
                   <div className={styles.headerMain}>
                     <div className={styles.headerLeft}>
-                      {!isNarrow && (
+                      <button
+                        type="button"
+                        className={styles.togglePanelBtn}
+                        onClick={() => setIsLeftPanelOpen((previous) => !previous)}
+                        title={isLeftPanelOpen ? "收起历史记录" : "展开历史记录"}
+                      >
+                        {useDrawerHistory ? "历史" : isLeftPanelOpen ? "收起" : "展开"}
+                      </button>
+                      <div className={styles.agentSelector} ref={agentMenuRef}>
                         <button
                           type="button"
-                          className={styles.togglePanelBtn}
-                          onClick={() => setIsLeftPanelOpen(!isLeftPanelOpen)}
-                          title={isLeftPanelOpen ? "折叠侧边栏" : "展开侧边栏"}
+                          className={`${styles.agentSelectorTrigger} ${isAgentMenuOpen ? styles.agentSelectorTriggerActive : ""}`}
+                          onClick={() => setIsAgentMenuOpen((open) => !open)}
+                          aria-haspopup="listbox"
+                          aria-expanded={isAgentMenuOpen}
+                          title={currentAgent?.displayName || "选择模型"}
                         >
-                          {isLeftPanelOpen ? "收起" : "展开"}
+                          <span className={styles.agentSelectorText}>
+                            <span className={styles.agentSelectorPrimary}>
+                              {currentAgent?.displayName || "未选择模型"}
+                            </span>
+                          </span>
+                          <span className={styles.agentSelectorChevron}>{isAgentMenuOpen ? "▴" : "▾"}</span>
                         </button>
-                      )}
-                      {isNarrow && (
-                        <button
-                          type="button"
-                          className={styles.togglePanelBtn}
-                          onClick={() => setShowHistoryModal(true)}
-                          title="查看历史对话"
-                        >
-                          历史
-                        </button>
-                      )}
-
-                      <div className={styles.headerTitleGroup}>
-                        <div className={styles.headerTitleRow}>
-                          <h3 className={styles.headerTitle}>AI Assistant</h3>
-                          <span className={styles.headerMeta}>{sessions.length} 个会话</span>
-                        </div>
+                        {isAgentMenuOpen ? (
+                          <div className={styles.agentMenu} role="listbox" aria-label="选择模型">
+                            {agents.map((agent) => (
+                              <button
+                                key={agent.id}
+                                type="button"
+                                className={`${styles.agentMenuItem} ${agent.id === currentAgent?.id ? styles.agentMenuItemActive : ""}`}
+                                onClick={() => {
+                                  setCurrentAgentId(agent.id);
+                                  setIsAgentMenuOpen(false);
+                                }}
+                                role="option"
+                                aria-selected={agent.id === currentAgent?.id}
+                                title={`${agent.displayName} (${agent.modelName})`}
+                              >
+                                <span className={styles.agentMenuPrimary}>{agent.displayName}</span>
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   </div>
                   <div className={styles.headerActions}>
-                    <div className={styles.agentSelector} ref={agentMenuRef}>
-                      <button
-                        type="button"
-                        className={`${styles.agentSelectorTrigger} ${isAgentMenuOpen ? styles.agentSelectorTriggerActive : ""}`}
-                        onClick={() => setIsAgentMenuOpen((open) => !open)}
-                        aria-haspopup="listbox"
-                        aria-expanded={isAgentMenuOpen}
-                        title={currentAgent?.displayName || "选择模型"}
-                      >
-                        <span className={styles.agentSelectorText}>
-                          <span className={styles.agentSelectorPrimary}>
-                            {currentAgent?.displayName || "未选择模型"}
-                          </span>
-                        </span>
-                        <span className={styles.agentSelectorChevron}>{isAgentMenuOpen ? "▴" : "▾"}</span>
-                      </button>
-                      {isAgentMenuOpen ? (
-                        <div className={styles.agentMenu} role="listbox" aria-label="选择模型">
-                          {agents.map((agent) => (
-                            <button
-                              key={agent.id}
-                              type="button"
-                              className={`${styles.agentMenuItem} ${agent.id === currentAgent?.id ? styles.agentMenuItemActive : ""}`}
-                              onClick={() => {
-                                setCurrentAgentId(agent.id);
-                                setIsAgentMenuOpen(false);
-                              }}
-                              role="option"
-                              aria-selected={agent.id === currentAgent?.id}
-                              title={`${agent.displayName} (${agent.modelName})`}
-                            >
-                              <span className={styles.agentMenuPrimary}>{agent.displayName}</span>
-                            </button>
-                          ))}
-                        </div>
-                      ) : null}
-                    </div>
                     <button type="button" className={styles.secondaryButton} onClick={() => setShowSettings(true)}>
                       设置
                     </button>
@@ -291,6 +308,8 @@ const AIAssistant: React.FC<PluginContext> = ({ vm, workspace }) => {
                   isGenerating={isGenerating}
                   vm={vm}
                   onOpenWorkspaceAttachment={handleOpenAttachment}
+                  onRestoreToUserMessage={handleRestoreToUserMessage}
+                  hasSnapshot={hasSnapshot}
                 />
 
                 <SelectionHint visible={isSelecting} />
@@ -309,6 +328,8 @@ const AIAssistant: React.FC<PluginContext> = ({ vm, workspace }) => {
                   onToggleReasoning={() => setEnableReasoning((previous) => !previous)}
                   onOpenAttachment={handleOpenAttachment}
                   isGenerating={isGenerating}
+                  isExpanded={isComposerExpanded}
+                  onToggleExpanded={() => setIsComposerExpanded((previous) => !previous)}
                   vm={vm}
                 />
 
@@ -334,9 +355,9 @@ const AIAssistant: React.FC<PluginContext> = ({ vm, workspace }) => {
                 />
 
                 {/* History Modal for Narrow Screen */}
-                {showHistoryModal && isNarrow && (
-                  <div className={styles.settingsModalOverlay} onClick={() => setShowHistoryModal(false)}>
-                    <div className={styles.settingsModal} onClick={(e) => e.stopPropagation()}>
+                {useDrawerHistory && isLeftPanelOpen && (
+                  <div className={styles.drawerOverlay} onClick={() => setIsLeftPanelOpen(false)}>
+                    <div className={styles.historyDrawer} onClick={(e) => e.stopPropagation()}>
                       <div className={styles.modalHeader}>
                         <div>
                           <h3>历史对话</h3>
@@ -365,7 +386,7 @@ const AIAssistant: React.FC<PluginContext> = ({ vm, workspace }) => {
                           </div>
                         ))}
                       </div>
-                      <button className={styles.closeBtn} onClick={() => setShowHistoryModal(false)}>
+                      <button className={styles.closeBtn} onClick={() => setIsLeftPanelOpen(false)}>
                         关闭
                       </button>
                     </div>
