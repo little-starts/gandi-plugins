@@ -6,4 +6,5 @@ export const PROVIDER_DEFAULT_URLS: Record<string, string> = {
   google: "https://generativelanguage.googleapis.com/v1beta",
   azure: "",
   custom: "",
+  custom_anthropic: "",
 };

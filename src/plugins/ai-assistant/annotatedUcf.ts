@@ -1,67 +1,8 @@
 import { scratchToUCF } from "./ucf";
 
-const BLOCK_ID_COMMENT_PREFIX = "// blockId:";
-
-const splitTopLevelSegments = (value: string, delimiter: string) => {
-  const result: string[] = [];
-  let current = "";
-  let depth = 0;
-
-  for (let index = 0; index < value.length; index++) {
-    const char = value[index];
-    if (char === "[") depth++;
-    if (char === "]") depth = Math.max(0, depth - 1);
-
-    let matchesDelimiter = true;
-    for (let offset = 0; offset < delimiter.length; offset++) {
-      if (value[index + offset] !== delimiter[offset]) {
-        matchesDelimiter = false;
-        break;
-      }
-    }
-
-    if (matchesDelimiter && depth === 0) {
-      result.push(current);
-      current = "";
-      index += delimiter.length - 1;
-      continue;
-    }
-
-    current += char;
-  }
-
-  result.push(current);
-  return result;
-};
-
-const annotateSingleSequence = (ucf: string, blockIds: string[]) => {
-  const lines = splitTopLevelSegments(ucf, "\n");
-  let blockIndex = 0;
-
-  return lines
-    .map((line) => {
-      const trimmedLine = line.trim();
-      if (!trimmedLine) {
-        return line;
-      }
-
-      if (trimmedLine === "]") {
-        return line;
-      }
-
-      const blockId = blockIds[blockIndex++];
-      if (!blockId) {
-        return line;
-      }
-
-      return `${line} ${BLOCK_ID_COMMENT_PREFIX} ${blockId}`;
-    })
-    .join("\n");
-};
-
-export const toAnnotatedUCF = (sequences: Array<{ blocks: any[]; statementBlockIds: string[] }>) =>
+export const toAnnotatedUCF = (sequences: Array<{ blocks: any[]; statementBlockIds: string[] }>, runtime?: any) =>
   sequences
-    .map(({ blocks, statementBlockIds }) => annotateSingleSequence(toModelUCF(blocks), statementBlockIds))
+    .map(({ blocks }) => scratchToUCF(blocks, { runtime, includeBlockIds: true }))
     .join("\n\n");
 
 export const stripAnnotatedUCFComments = (ucf: string) =>
@@ -70,15 +11,8 @@ export const stripAnnotatedUCFComments = (ucf: string) =>
     .map((line) => line.replace(/\s*\/\/\s*blockId:\s*[^\s]+\s*$/i, ""))
     .join("\n");
 
-export const toModelUCF = (blocks: any[]) =>
-  scratchToUCF(blocks)
-    .replace(/=B\[(.*?)\]S\[(.*?)\]/g, "=[$1]")
-    .replace(/=\s+/g, "=")
-    .replace(/,\s+/g, ", ");
+export const toModelUCF = (blocks: any[], runtime?: any) =>
+  scratchToUCF(blocks, { runtime, includeBlockIds: false });
 
 export const normalizeModelUCF = (ucf: string) =>
-  stripAnnotatedUCFComments(ucf)
-    .replace(/=\s+B\s*\[/g, "=B[")
-    .replace(/\]\s*S\s*\[/g, "]S[")
-    .replace(/[ \t]+$/gm, "")
-    .trim();
+  stripAnnotatedUCFComments(ucf).trim();

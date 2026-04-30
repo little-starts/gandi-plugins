@@ -1,8 +1,29 @@
 import { scratchToUCF, ucfToScratch } from "./ucf";
 import { normalizeModelUCF, toAnnotatedUCF } from "./annotatedUcf";
 import { getBlocksRangeUCF, replaceBlocksRangeByUCF, replaceScriptByUCF } from "./workspaceRangeTools";
+import { setGetBlockInfoTool, setRuntime } from "./converter";
+import scratchBlocksCatalog from "./scratch_blocks.json";
 
 // This file contains tools for the AI assistant to interact with Scratch.
+
+const NativeScratchBlockCatalog: Record<string, { block: any; menus: Record<string, any> }> = (() => {
+  const result: Record<string, { block: any; menus: Record<string, any> }> = {};
+  const root = scratchBlocksCatalog as any;
+
+  for (const categoryGroup of Object.values(root?.categories || {})) {
+    for (const categoryInfo of Object.values(categoryGroup as Record<string, any>)) {
+      const blocks = Array.isArray((categoryInfo as any)?.blocks) ? (categoryInfo as any).blocks : [];
+      const menus = (categoryInfo as any)?.menus && typeof (categoryInfo as any).menus === "object" ? (categoryInfo as any).menus : {};
+      for (const block of blocks) {
+        const opcode = String((block as any)?.opcode || "").trim();
+        if (!opcode) continue;
+        result[opcode] = { block, menus };
+      }
+    }
+  }
+
+  return result;
+})();
 
 export class AITools {
   static AllBlockInfo: Record<string, string> = {
@@ -16,6 +37,7 @@ export class AITools {
     control_if: "如果 [CONDITION] 那么（CONDITION：Boolean）",
     control_if_else: "如果 [CONDITION] 那么 否则（CONDITION：Boolean）",
     control_stop: "停止 [STOP_OPTION]（STOP_OPTION：string）",
+    control_start_as_clone: "当作为克隆体启动时",
     control_create_clone_of: "克隆 [CLONE_OPTION]（CLONE_OPTION：string）",
     control_delete_this_clone: "删除此克隆体",
     control_get_counter: "计数器",
@@ -160,6 +182,10 @@ export class AITools {
 
   constructor(vm: any) {
     this.vm = vm;
+    if (vm && vm.runtime) {
+      setRuntime(vm.runtime);
+    }
+    setGetBlockInfoTool((opcode: string) => this.getBlockInfo(opcode));
   }
 
   private _getTarget(targetId?: string) {
@@ -328,7 +354,7 @@ export class AITools {
           blocks: scriptBlocks,
           statementBlockIds: scriptBlockIds,
         },
-      ]),
+      ], this.vm.runtime),
     };
   }
 
@@ -474,6 +500,571 @@ export class AITools {
     return Object.fromEntries(resultMap);
   }
 
+  private _normalizeBlockType(value: any) {
+    const raw = String(value || "").toLowerCase();
+    if (raw === "hat" || raw === "event") return "hat";
+    if (raw === "reporter" || raw === "value") return "reporter";
+    if (raw === "boolean" || raw === "predicate") return "boolean";
+    if (raw === "command" || raw === "statement" || raw === "loop" || raw === "conditional") return "command";
+    return "command";
+  }
+
+  private _getArgumentTypeMeta(typeValue: any) {
+    const raw = String(typeValue || "").toLowerCase();
+    if (!raw) return { inferred: undefined, asField: false };
+    if (raw === "variable") return { inferred: "variable", asField: true };
+    if (raw === "list") return { inferred: "list", asField: true };
+    if (raw === "broadcast") return { inferred: "broadcast", asField: true };
+    if (raw === "number" || raw === "n") return { inferred: "number", asField: false };
+    if (raw === "boolean" || raw === "bool" || raw === "b") return { inferred: "boolean", asField: false };
+    if (raw === "string" || raw === "s") return { inferred: "string", asField: false };
+    return { inferred: raw, asField: false };
+  }
+
+  private _inferFieldType(fieldName: string, field: any) {
+    const upperName = String(fieldName || "").toUpperCase();
+    if (upperName.includes("VARIABLE")) return "variable";
+    if (upperName.includes("LIST")) return "list";
+    if (upperName.includes("BROADCAST")) return "broadcast";
+
+    const ctorName = String(field?.constructor?.name || "").toLowerCase();
+    if (ctorName.includes("variable")) return "variable";
+    if (ctorName.includes("dropdown")) return "string";
+    if (ctorName.includes("number")) return "number";
+    return undefined;
+  }
+
+  private _normalizeMenuOptions(rawOptions: any) {
+    if (!Array.isArray(rawOptions)) return null;
+    const normalized = [];
+    for (const item of rawOptions) {
+      if (Array.isArray(item)) {
+        normalized.push({ text: String(item[0] ?? ""), value: item[1] });
+        continue;
+      }
+      if (item && typeof item === "object") {
+        const text = (item as any).text ?? (item as any).label ?? (item as any).name ?? (item as any).value ?? "";
+        const value = (item as any).value ?? text;
+        normalized.push({ text: String(text), value });
+        continue;
+      }
+      normalized.push({ text: String(item ?? ""), value: item });
+    }
+    return normalized;
+  }
+
+  private _readFieldMenuOptions(field: any) {
+    if (!field || typeof field.getOptions !== "function") return null;
+    try {
+      return this._normalizeMenuOptions(field.getOptions(false));
+    } catch {
+      try {
+        return this._normalizeMenuOptions(field.getOptions());
+      } catch {
+        return null;
+      }
+    }
+  }
+
+  private _createScratchWorkspace(scratchBlocks: any) {
+    const mainWorkspace = scratchBlocks?.getMainWorkspace?.();
+    if (mainWorkspace) {
+      return { workspace: mainWorkspace, ownsWorkspace: false };
+    }
+    if (typeof scratchBlocks?.Workspace === "function") {
+      return { workspace: new scratchBlocks.Workspace(), ownsWorkspace: true };
+    }
+    return { workspace: null, ownsWorkspace: false };
+  }
+
+  private _readMenuFieldMetaFromBlockOpcode(blockOpcode: string, preferredFieldName?: string) {
+    const scratchBlocks = (window as any)?.Blockly || (window as any)?.ScratchBlocks || this.vm?.runtime?.scratchBlocks;
+    if (!blockOpcode || !scratchBlocks?.Blocks?.[blockOpcode]) return null;
+
+    const { workspace, ownsWorkspace } = this._createScratchWorkspace(scratchBlocks);
+    if (!workspace || typeof workspace.newBlock !== "function") return null;
+
+    let block: any = null;
+    try {
+      block = workspace.newBlock(blockOpcode);
+      const inputList = Array.isArray(block?.inputList) ? block.inputList : [];
+      let firstMeta: any = null;
+
+      for (const input of inputList) {
+        const fieldRow = Array.isArray(input?.fieldRow) ? input.fieldRow : [];
+        for (const field of fieldRow) {
+          if (typeof field?.getOptions !== "function") continue;
+
+          let defaultValue: any;
+          try {
+            defaultValue = typeof field.getValue === "function" ? field.getValue() : undefined;
+          } catch {
+            defaultValue = undefined;
+          }
+
+          const fieldName = String(field?.name || preferredFieldName || "");
+          const meta = {
+            fieldName,
+            type: this._inferFieldType(fieldName, field) || "string",
+            menu: fieldName || preferredFieldName || null,
+            defaultValue,
+            menuOptions: this._readFieldMenuOptions(field),
+          };
+          if (preferredFieldName && fieldName === preferredFieldName) {
+            return meta;
+          }
+          firstMeta = firstMeta || meta;
+        }
+      }
+      return firstMeta;
+    } catch {
+      return null;
+    } finally {
+      try {
+        block?.dispose?.();
+      } catch {
+        // ignore temp block disposal failures
+      }
+      if (ownsWorkspace) {
+        try {
+          workspace.dispose?.();
+        } catch {
+          // ignore temp workspace disposal failures
+        }
+      }
+    }
+  }
+
+  private _menuConfigToOptions(menuConfig: any) {
+    if (!menuConfig) return null;
+    if (Array.isArray(menuConfig)) return this._normalizeMenuOptions(menuConfig);
+    if (typeof menuConfig === "object") {
+      if (Array.isArray((menuConfig as any).items)) {
+        return this._normalizeMenuOptions((menuConfig as any).items);
+      }
+      if (Array.isArray((menuConfig as any).options)) {
+        return this._normalizeMenuOptions((menuConfig as any).options);
+      }
+    }
+    return null;
+  }
+
+  private _getNativeBlockCatalogEntry(opcode: string) {
+    return NativeScratchBlockCatalog[opcode] || null;
+  }
+
+  private _fillFromNativeCatalog(opcode: string, result: any) {
+    const entry = this._getNativeBlockCatalogEntry(opcode);
+    if (!entry) return;
+
+    result.found = true;
+    result.extensionId = null;
+    if (!result.blockType) {
+      result.blockType = this._normalizeBlockType(entry.block?.blockType);
+    }
+    if (!result.text) {
+      result.text = AITools.AllBlockInfo[opcode] || entry.block?.text || "";
+    }
+
+    const argumentsMap = entry.block?.arguments && typeof entry.block.arguments === "object" ? entry.block.arguments : {};
+    for (const [argName, argInfo] of Object.entries(argumentsMap)) {
+      const typedArg = argInfo as any;
+      const typeMeta = this._getArgumentTypeMeta(typedArg?.type);
+      const normalized = {
+        type: typeMeta.inferred,
+        defaultValue: typedArg?.defaultValue,
+        menu: typedArg?.menu || null,
+      };
+
+      if (String(argName).startsWith("SUBSTACK")) {
+        result.inputs[argName] = {
+          ...normalized,
+          type: normalized.type || "substack",
+        };
+        if (!result.substacks.includes(argName)) {
+          result.substacks.push(argName);
+        }
+        continue;
+      }
+
+      const shouldUseField = Boolean(typedArg?.menu || typeMeta.asField);
+      const target = shouldUseField ? result.fields : result.inputs;
+      target[argName] = normalized;
+
+      if (typedArg?.menu && entry.menus?.[typedArg.menu]) {
+        result.menus = result.menus || {};
+        result.menus[typedArg.menu] = {
+          menuType: entry.menus[typedArg.menu]?.acceptReporters ? "placeable" : "non_placeable",
+          options: this._menuConfigToOptions(entry.menus[typedArg.menu]),
+          sources: [{ sourceType: shouldUseField ? "field" : "input", sourceName: argName }],
+        };
+
+        if (shouldUseField) {
+          target[argName] = {
+            ...target[argName],
+            menuType: result.menus[typedArg.menu].menuType,
+            menuOptions: result.menus[typedArg.menu].options,
+          };
+        }
+      }
+    }
+  }
+
+  private _hasMenuShadowBlock(opcode: string, menuName: string, activeRuntime: any) {
+    const candidates = [`${opcode}_menu`, menuName, `${menuName}_menu`];
+    return candidates.some((candidate) =>
+      Boolean(
+        (activeRuntime?._primitives && activeRuntime._primitives[candidate]) ||
+          (activeRuntime?.scratchBlocks?.Blocks && activeRuntime.scratchBlocks.Blocks[candidate]) ||
+          ((window as any)?.ScratchBlocks?.Blocks && (window as any).ScratchBlocks.Blocks[candidate]) ||
+          ((window as any)?.Blockly?.Blocks && (window as any).Blockly.Blocks[candidate]),
+      ),
+    );
+  }
+
+  private _readMenuOptionsFromShadowBlock(opcode: string, menuName: string, activeRuntime: any) {
+    const scratchBlocks =
+      activeRuntime?.scratchBlocks || (window as any)?.Blockly || (window as any)?.ScratchBlocks;
+    if (!scratchBlocks?.Blocks) return null;
+
+    const candidates = [`${opcode}_menu`, menuName, `${menuName}_menu`].filter(
+      (candidate) => scratchBlocks.Blocks[candidate],
+    );
+    if (candidates.length === 0) return null;
+    const meta = this._readMenuFieldMetaFromBlockOpcode(candidates[0], menuName);
+    return meta?.menuOptions || null;
+  }
+
+  private _readMenuFieldMetaFromInput(inputName: string, input: any) {
+    const targetBlock =
+      (typeof input?.connection?.targetBlock === "function" ? input.connection.targetBlock() : null) ||
+      input?.connection?.targetConnection?.sourceBlock_ ||
+      null;
+    if (!targetBlock) return null;
+
+    const inputList = Array.isArray(targetBlock.inputList) ? targetBlock.inputList : [];
+    for (const targetInput of inputList) {
+      const fieldRow = Array.isArray(targetInput?.fieldRow) ? targetInput.fieldRow : [];
+      for (const field of fieldRow) {
+        if (typeof field?.getOptions !== "function") continue;
+
+        let defaultValue: any;
+        try {
+          defaultValue = typeof field.getValue === "function" ? field.getValue() : undefined;
+        } catch {
+          defaultValue = undefined;
+        }
+
+        return {
+          type: this._inferFieldType(inputName, field) || "string",
+          menu: String(field?.name || inputName),
+          defaultValue,
+          menuOptions: this._readFieldMenuOptions(field),
+        };
+      }
+    }
+    return null;
+  }
+
+  private _promoteNativeMenuInputsToFields(opcode: string, result: any) {
+    const menuOpcode = `${opcode}_menu`;
+    const menuMeta = this._readMenuFieldMetaFromBlockOpcode(menuOpcode);
+    const fieldName = String(menuMeta?.fieldName || "").trim();
+    if (!fieldName || !result.inputs[fieldName] || result.substacks.includes(fieldName)) {
+      return;
+    }
+
+    const inputMeta = result.inputs[fieldName];
+    result.fields[fieldName] = {
+      ...(result.fields[fieldName] || {}),
+      type: menuMeta?.type || inputMeta?.type || "string",
+      menu: menuMeta?.menu || fieldName,
+      defaultValue: menuMeta?.defaultValue,
+      menuOptions: menuMeta?.menuOptions || null,
+      menuType: "non_placeable",
+    };
+    delete result.inputs[fieldName];
+  }
+
+  private _moveMenuInputsToFields(result: any) {
+    for (const [inputName, inputMeta] of Object.entries({ ...(result.inputs || {}) })) {
+      const menuName = typeof (inputMeta as any)?.menu === "string" ? (inputMeta as any).menu : null;
+      if (!menuName || result.substacks.includes(inputName)) {
+        continue;
+      }
+
+      result.fields[inputName] = {
+        ...(result.fields[inputName] || {}),
+        ...(inputMeta as any),
+      };
+      delete result.inputs[inputName];
+    }
+  }
+
+  private _dedupeFieldAndInputNames(result: any) {
+    const fieldNames = new Set(Object.keys(result.fields || {}));
+    for (const inputName of Object.keys({ ...(result.inputs || {}) })) {
+      if (fieldNames.has(inputName)) {
+        delete result.inputs[inputName];
+      }
+    }
+  }
+
+  private _isKnownOpcode(opcode: string) {
+    if (!opcode) return false;
+    if (this._getNativeBlockCatalogEntry(opcode)) return true;
+    if (this.vm?.runtime?._primitives?.[opcode]) return true;
+    if (AITools.AllBlockInfo[opcode]) return true;
+
+    const scratchBlocks = (window as any)?.Blockly || (window as any)?.ScratchBlocks || this.vm?.runtime?.scratchBlocks;
+    if (scratchBlocks?.Blocks && typeof scratchBlocks.Blocks[opcode] !== "undefined") {
+      return true;
+    }
+
+    for (const extInfo of this.vm?.runtime?._blockInfo || []) {
+      for (const block of extInfo?.blocks || []) {
+        const fullOpcode = `${extInfo.id}_${block.info?.opcode}`;
+        if (fullOpcode === opcode || block.info?.opcode === opcode) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  private _enrichMenuMeta(opcode: string, result: any, extMenus: any, activeRuntime: any) {
+    const menuSummary: Record<string, any> = result.menus && typeof result.menus === "object" ? result.menus : {};
+    const ensureMeta = (entry: any, sourceType: "field" | "input", sourceName: string) => {
+      if (!entry || typeof entry !== "object") return;
+      const menuName = typeof entry.menu === "string" ? entry.menu : null;
+      if (!menuName) return;
+
+      const existingOptions = Array.isArray(entry.menuOptions) ? entry.menuOptions : null;
+      const existingMenuType = typeof entry.menuType === "string" ? entry.menuType : null;
+      const fromExt = this._menuConfigToOptions(extMenus?.[menuName]);
+      const fromShadow = this._readMenuOptionsFromShadowBlock(opcode, menuName, activeRuntime);
+      const menuOptions = existingOptions || fromExt || fromShadow || null;
+      const placeable =
+        existingMenuType === "placeable" ||
+        (existingMenuType !== "non_placeable" &&
+          (sourceType === "input" || this._hasMenuShadowBlock(opcode, menuName, activeRuntime)));
+
+      entry.menuType = placeable ? "placeable" : "non_placeable";
+      entry.menuOptions = menuOptions;
+
+      if (!menuSummary[menuName]) {
+        menuSummary[menuName] = {
+          menuType: entry.menuType,
+          options: menuOptions,
+          sources: [],
+        };
+      } else {
+        if (!menuSummary[menuName].options && menuOptions) {
+          menuSummary[menuName].options = menuOptions;
+        }
+        if (menuSummary[menuName].menuType !== "placeable" && entry.menuType === "placeable") {
+          menuSummary[menuName].menuType = "placeable";
+        }
+      }
+      const hasSameSource = menuSummary[menuName].sources.some(
+        (source: any) => source?.sourceType === sourceType && source?.sourceName === sourceName,
+      );
+      if (!hasSameSource) {
+        menuSummary[menuName].sources.push({ sourceType, sourceName });
+      }
+    };
+
+    for (const [fieldName, fieldMeta] of Object.entries(result.fields || {})) {
+      ensureMeta(fieldMeta, "field", fieldName);
+    }
+    for (const [inputName, inputMeta] of Object.entries(result.inputs || {})) {
+      ensureMeta(inputMeta, "input", inputName);
+    }
+
+    if (Object.keys(menuSummary).length > 0) {
+      result.menus = menuSummary;
+    }
+  }
+
+  private _fillFromScratchBlocks(opcode: string, result: any) {
+    const scratchBlocks = (window as any)?.Blockly || (window as any)?.ScratchBlocks || this.vm?.runtime?.scratchBlocks;
+    if (!scratchBlocks?.Blocks || typeof scratchBlocks?.Blocks?.[opcode] === "undefined") {
+      return;
+    }
+
+    const mainWorkspace = scratchBlocks?.getMainWorkspace?.();
+    let workspace = mainWorkspace;
+    let ownsWorkspace = false;
+    if (!workspace && typeof scratchBlocks?.Workspace === "function") {
+      workspace = new scratchBlocks.Workspace();
+      ownsWorkspace = true;
+    }
+    if (!workspace || typeof workspace.newBlock !== "function") {
+      return;
+    }
+
+    let block: any = null;
+    try {
+      block = workspace.newBlock(opcode);
+    } catch {
+      return;
+    }
+    if (!block) return;
+
+    try {
+      if (!result.blockType) {
+        if (block.outputConnection) {
+          const outputChecks = block.outputConnection.check_ as string[] | null | undefined;
+          const hasBooleanOutput = Array.isArray(outputChecks)
+            ? outputChecks.some((v) => String(v).toLowerCase() === "boolean")
+            : false;
+          result.blockType = hasBooleanOutput ? "boolean" : "reporter";
+        } else if (!block.previousConnection && block.nextConnection) {
+          result.blockType = "hat";
+        } else {
+          result.blockType = "command";
+        }
+      }
+
+      const inputList = Array.isArray(block.inputList) ? block.inputList : [];
+      for (const input of inputList) {
+        const inputName = input?.name ? String(input.name) : "";
+        const fieldRow = Array.isArray(input?.fieldRow) ? input.fieldRow : [];
+
+        for (const field of fieldRow) {
+          const fieldName = field?.name ? String(field.name) : "";
+          if (!fieldName) continue;
+
+          let defaultValue: any;
+          try {
+            defaultValue = typeof field.getValue === "function" ? field.getValue() : undefined;
+          } catch {
+            defaultValue = undefined;
+          }
+
+          const hasMenu = typeof field?.getOptions === "function";
+          result.fields[fieldName] = {
+            type: this._inferFieldType(fieldName, field),
+            menu: hasMenu ? fieldName : null,
+            defaultValue,
+            menuOptions: hasMenu ? this._readFieldMenuOptions(field) : null,
+            menuType: hasMenu ? "non_placeable" : undefined,
+          };
+        }
+
+        if (!inputName) continue;
+        const existingFieldMeta = result.fields[inputName];
+        if (existingFieldMeta && typeof existingFieldMeta === "object" && existingFieldMeta.menu) {
+          delete result.inputs[inputName];
+          continue;
+        }
+
+        const menuFieldMeta = this._readMenuFieldMetaFromInput(inputName, input);
+        if (menuFieldMeta) {
+          result.fields[inputName] = {
+            ...(result.fields[inputName] || {}),
+            ...menuFieldMeta,
+          };
+          delete result.inputs[inputName];
+          continue;
+        }
+
+        const inputMeta: any = result.inputs[inputName] || { type: undefined, menu: null, defaultValue: undefined };
+        const statementInputType =
+          typeof scratchBlocks?.NEXT_STATEMENT === "number" ? scratchBlocks.NEXT_STATEMENT : undefined;
+        const inputTypeText = String(input?.type ?? "").toLowerCase();
+        const isStatementInput =
+          inputName.startsWith("SUBSTACK") ||
+          (statementInputType !== undefined && input?.type === statementInputType) ||
+          inputTypeText.includes("statement");
+        if (isStatementInput) {
+          inputMeta.type = inputMeta.type || "substack";
+          if (!result.substacks.includes(inputName)) {
+            result.substacks.push(inputName);
+          }
+        } else {
+          const check = input?.connection?.check_;
+          if (Array.isArray(check) && check.length > 0) {
+            inputMeta.type = check.join("|");
+          } else if (!inputMeta.type) {
+            inputMeta.type = "string|number";
+          }
+        }
+        result.inputs[inputName] = inputMeta;
+      }
+
+      if (Object.keys(result.fields).length > 0 || Object.keys(result.inputs).length > 0) {
+        result.found = true;
+      }
+    } finally {
+      try {
+        block.dispose?.();
+      } catch {
+        // ignore temp block disposal failures
+      }
+      if (ownsWorkspace) {
+        try {
+          workspace.dispose?.();
+        } catch {
+          // ignore temp workspace disposal failures
+        }
+      }
+    }
+  }
+
+  private _fillFromAllBlockInfo(opcode: string, result: any) {
+    const text = AITools.AllBlockInfo[opcode];
+    if (!text) return;
+    result.text = text;
+    result.found = true;
+    if (!result.blockType) {
+      result.blockType = "command";
+    }
+
+    const matches = [...text.matchAll(/[（(]([^）)]*)[）)]/g)];
+    if (matches.length === 0) return;
+    const inside = String(matches[matches.length - 1]?.[1] ?? "").trim();
+    if (!inside) return;
+
+    const parts = inside.split(/[，,]/).map((x) => x.trim()).filter(Boolean);
+    for (const part of parts) {
+      const kv = part.split(/[：:]/);
+      if (kv.length !== 2) continue;
+      const argName = kv[0].trim();
+      const typeMeta = this._getArgumentTypeMeta(kv[1].trim());
+      const target = typeMeta.asField ? result.fields : result.inputs;
+      target[argName] = {
+        type: typeMeta.inferred,
+        menu: typeMeta.asField ? argName : null,
+        defaultValue: undefined,
+      };
+    }
+  }
+
+  private _applyNativeSubstackFallback(opcode: string, result: any) {
+    const fallback: Record<string, string[]> = {
+      control_repeat: ["SUBSTACK"],
+      control_repeat_until: ["SUBSTACK"],
+      control_while: ["SUBSTACK"],
+      control_forever: ["SUBSTACK"],
+      control_for_each: ["SUBSTACK"],
+      control_if: ["SUBSTACK"],
+      control_if_else: ["SUBSTACK", "SUBSTACK2"],
+    };
+    const names = fallback[opcode];
+    if (!names) return;
+    for (const name of names) {
+      if (!result.substacks.includes(name)) {
+        result.substacks.push(name);
+      }
+      result.inputs[name] = {
+        ...(result.inputs[name] || {}),
+        type: result.inputs[name]?.type || "substack",
+        menu: result.inputs[name]?.menu ?? null,
+      };
+    }
+  }
+
   searchBlocks(keyword: string) {
     const keywords = keyword.trim().toLowerCase().split(/\s+/);
     if (keywords.length === 0 || keywords[0] === "") return [];
@@ -505,52 +1096,119 @@ export class AITools {
   }
 
   getBlockInfo(opcode: string) {
+    const requestedOpcode = String(opcode ?? "").trim();
+    if (!requestedOpcode) {
+      throw new Error("getBlockInfo: opcode 不能为空");
+    }
+
+    let resolvedOpcode = requestedOpcode;
+    if (requestedOpcode.includes(".") && !this._isKnownOpcode(requestedOpcode)) {
+      const fallbackOpcode = requestedOpcode.replace(/\./g, "_");
+      if (fallbackOpcode !== requestedOpcode && this._isKnownOpcode(fallbackOpcode)) {
+        resolvedOpcode = fallbackOpcode;
+      }
+    }
+
     const result: any = {
-      opcode: opcode,
+      opcode: resolvedOpcode,
       found: false,
       type: null,
-      arguments: {},
+      blockType: null,
+      fields: {},
+      inputs: {},
+      substacks: [],
       text: null,
       extensionId: null,
     };
 
-    if (this.vm.runtime._primitives && this.vm.runtime._primitives[opcode]) {
+    if (this.vm.runtime._primitives && this.vm.runtime._primitives[resolvedOpcode]) {
       result.found = true;
-      result.type = "primitive";
     }
 
-    if (AITools.AllBlockInfo[opcode]) {
-      result.found = true;
-      result.type = "primitive";
-      result.text = AITools.AllBlockInfo[opcode];
-    }
+    this._fillFromNativeCatalog(resolvedOpcode, result);
+    this._fillFromAllBlockInfo(resolvedOpcode, result);
 
     if (this.vm.runtime._blockInfo) {
       for (const extInfo of this.vm.runtime._blockInfo) {
         if (extInfo.blocks) {
           for (const block of extInfo.blocks) {
             const fullOpcode = `${extInfo.id}_${block.info?.opcode}`;
-            if (fullOpcode === opcode || block.info?.opcode === opcode) {
+            if (fullOpcode === resolvedOpcode || block.info?.opcode === resolvedOpcode) {
               result.found = true;
-              result.type = block.info?.blockType || "command";
-              result.extensionId = extInfo.id;
+              result.blockType = this._normalizeBlockType(block.info?.blockType);
+              result.extensionId = extInfo.id || null;
               result.text = block.info?.text || "";
 
               if (block.info?.arguments) {
                 for (const [argName, argInfo] of Object.entries(block.info.arguments)) {
-                  result.arguments[argName] = {
-                    type: (argInfo as any).type,
-                    defaultValue: (argInfo as any).defaultValue,
-                    menu: (argInfo as any).menu || null,
+                  const typedArg = argInfo as any;
+                  const typeMeta = this._getArgumentTypeMeta(typedArg?.type);
+                  const normalized = {
+                    type: typeMeta.inferred,
+                    defaultValue: typedArg?.defaultValue,
+                    menu: typedArg?.menu || null,
                   };
+                  if (String(argName).startsWith("SUBSTACK")) {
+                    result.inputs[argName] = {
+                      ...normalized,
+                      type: normalized.type || "substack",
+                    };
+                    if (!result.substacks.includes(argName)) {
+                      result.substacks.push(argName);
+                    }
+                  } else {
+                    const shouldUseField = Boolean(typedArg?.menu || typeMeta.asField);
+                    const target = shouldUseField ? result.fields : result.inputs;
+                    target[argName] = normalized;
+                  }
                 }
               }
+
+              if (extInfo?.menus && typeof extInfo.menus === "object") {
+                const usedMenuNames = new Set<string>();
+                for (const meta of Object.values(result.fields)) {
+                  const menuName = (meta as any)?.menu;
+                  if (typeof menuName === "string" && menuName) usedMenuNames.add(menuName);
+                }
+                for (const meta of Object.values(result.inputs)) {
+                  const menuName = (meta as any)?.menu;
+                  if (typeof menuName === "string" && menuName) usedMenuNames.add(menuName);
+                }
+                for (const menuName of usedMenuNames) {
+                  if (extInfo.menus[menuName] !== undefined) {
+                    result.menus = result.menus || {};
+                    result.menus[menuName] = extInfo.menus[menuName];
+                  }
+                }
+              }
+
+              this._enrichMenuMeta(resolvedOpcode, result, extInfo?.menus, this.vm.runtime);
               break;
             }
           }
         }
       }
     }
+
+    if (result.found && !result.extensionId) {
+      this._fillFromScratchBlocks(resolvedOpcode, result);
+      this._promoteNativeMenuInputsToFields(resolvedOpcode, result);
+      this._applyNativeSubstackFallback(resolvedOpcode, result);
+      this._moveMenuInputsToFields(result);
+      this._enrichMenuMeta(resolvedOpcode, result, null, this.vm.runtime);
+    }
+
+    this._moveMenuInputsToFields(result);
+    this._dedupeFieldAndInputNames(result);
+
+    if (!result.found) {
+      if (resolvedOpcode !== requestedOpcode) {
+        throw new Error(`getBlockInfo: 未找到积木 opcode "${requestedOpcode}"，已自动尝试 "${resolvedOpcode}"`);
+      }
+      throw new Error(`getBlockInfo: 未找到积木 opcode "${requestedOpcode}"`);
+    }
+
+    result.type = result.found ? result.blockType : null;
     return result;
   }
 
@@ -581,7 +1239,7 @@ export class AITools {
     const sequences = this._getTopLevelBlocks(blocks).map((block: any) =>
       this._collectStatementBlocks(blocks, block.id),
     );
-    return toAnnotatedUCF(sequences);
+    return toAnnotatedUCF(sequences, this.vm.runtime);
   }
 
   getCustomBlocks(targetId?: string) {
@@ -660,7 +1318,7 @@ export class AITools {
     console.log("[AI Tool Call] generateCodeFromUCF started. UCF String:", ucfString);
     let newBlocks;
     try {
-      newBlocks = ucfToScratch(normalizeModelUCF(ucfString));
+      newBlocks = ucfToScratch(normalizeModelUCF(ucfString), { runtime: this.vm.runtime });
       console.log("[AI Tool Call] Parsed blocks array:", newBlocks);
     } catch (e) {
       console.error("[AI Tool Call] Error parsing UCF string:", e);

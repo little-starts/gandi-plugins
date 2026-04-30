@@ -1,5 +1,6 @@
 import * as React from "react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import styles from "../styles.less";
 import { Attachment, ChatMessage, ToolCall } from "../types";
 import { ToolCallViewer } from "./ToolCallViewer";
@@ -317,7 +318,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                   {item.segments.map((segment) =>
                     segment.type === "text" ? (
                       <div key={segment.id} className={styles.messageMarkdown}>
-                        <ReactMarkdown>{segment.content}</ReactMarkdown>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{segment.content}</ReactMarkdown>
                       </div>
                     ) : segment.type === "reasoning" ? (
                       <div key={segment.id} className={styles.reasoningInline}>

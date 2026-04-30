@@ -17,20 +17,27 @@ interface RuntimeWithBlockInfo {
   _blockInfo?: RuntimeBlockInfoItem[];
 }
 
-const getOpcodeLines = (content: string) =>
-  content
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line && !line.startsWith("//") && line.includes("|"));
+const getOpcodeLines = (content: string) => {
+  const opcodes = [];
+  const regex = /([a-zA-Z0-9_$]+)\.([a-zA-Z0-9_$]+)\(/g;
+  let match;
+  while ((match = regex.exec(content)) !== null) {
+    let namespace = match[1].replace(/\$dot\$/g, '.').replace(/\$dash\$/g, '-');
+    let method = match[2].replace(/\$dot\$/g, '.').replace(/\$dash\$/g, '-');
+    opcodes.push(`${namespace}_${method}`);
+  }
+  if (content.includes("define(")) {
+    opcodes.push("procedures_definition");
+  }
+  return opcodes;
+};
 
 export const getAttachmentOpcodes = (attachment: Attachment) => {
   if (attachment.kind !== "workspace-ucf" && attachment.kind !== "workspace-ucf-range") {
     return [];
   }
 
-  return getOpcodeLines(attachment.content)
-    .map((line) => line.split("|")[0].trim())
-    .filter(Boolean);
+  return getOpcodeLines(attachment.content);
 };
 
 const resolveOpcodeText = (opcode: string, vm: PluginContext["vm"]) => {

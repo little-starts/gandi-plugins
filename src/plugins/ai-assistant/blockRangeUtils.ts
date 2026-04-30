@@ -210,7 +210,7 @@ export const createRangeAttachment = (
     })),
   );
 
-  const content = scratchToUCF(serializedBlocks);
+  const content = scratchToUCF(serializedBlocks, { runtime: vm.runtime, includeBlockIds: true });
   console.log("[AI Assistant Range] generated UCF:\n" + content);
   const attachment: Attachment = {
     id: `${Date.now()}-${validation.startBlockId}`,

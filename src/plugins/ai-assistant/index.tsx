@@ -19,6 +19,7 @@ import { useChatSessions } from "./hooks/useChatSessions";
 import { useChat } from "./hooks/useChat";
 import { Attachment } from "./types";
 import { getAttachmentDisplayName } from "./attachmentUtils";
+import { callGetBlockInfo, setRuntime } from "./converter";
 
 const DEFAULT_CONTAINER_INFO = {
   width: 800,
@@ -50,7 +51,9 @@ const AIAssistant: React.FC<PluginContext> = ({ vm, workspace }) => {
   // Use custom hooks for complex logic
   const {
     agents,
-    setCurrentAgentId,
+    flattenedModels,
+    currentModelId,
+    setCurrentModelId,
     currentAgent,
     showSettings,
     setShowSettings,
@@ -58,7 +61,8 @@ const AIAssistant: React.FC<PluginContext> = ({ vm, workspace }) => {
     setEditingAgent,
     handleSaveAgent,
     handleDeleteAgent,
-    handleProviderChange,
+    handleExportAgent,
+    handleImportAgents,
   } = useAgents();
 
   const {
@@ -151,7 +155,7 @@ const AIAssistant: React.FC<PluginContext> = ({ vm, workspace }) => {
     [setContainerInfo],
   );
 
-  const pluginsWrapper = document.querySelector(".plugins-wrapper");
+  const pluginsWrapper = document.querySelector(".plugins-wrapper") || document.querySelector("#gandi-plugins-wrapper");
 
   React.useEffect(() => {
     if (!isAgentMenuOpen) return;
@@ -215,7 +219,9 @@ const AIAssistant: React.FC<PluginContext> = ({ vm, workspace }) => {
     };
   }, [vm, handleShow, setAttachments]);
 
-  if (!pluginsWrapper) return null;
+  if (!pluginsWrapper) {
+    console.warn("[AI Assistant] No portal target found (.plugins-wrapper or #gandi-plugins-wrapper)");
+  }
 
   return ReactDOM.createPortal(
     <section className={styles.aiAssistantRoot} ref={containerRef}>
@@ -274,21 +280,21 @@ const AIAssistant: React.FC<PluginContext> = ({ vm, workspace }) => {
                           <span className={styles.agentSelectorChevron}>{isAgentMenuOpen ? "▴" : "▾"}</span>
                         </button>
                         {isAgentMenuOpen ? (
-                          <div className={styles.agentMenu} role="listbox" aria-label="选择模型">
-                            {agents.map((agent) => (
+                          <div className={styles.agentMenu} role="listbox" aria-label="选择模型" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                            {flattenedModels.map((model) => (
                               <button
-                                key={agent.id}
+                                key={model.id}
                                 type="button"
-                                className={`${styles.agentMenuItem} ${agent.id === currentAgent?.id ? styles.agentMenuItemActive : ""}`}
+                                className={`${styles.agentMenuItem} ${model.id === currentAgent?.id ? styles.agentMenuItemActive : ""}`}
                                 onClick={() => {
-                                  setCurrentAgentId(agent.id);
+                                  setCurrentModelId(model.id);
                                   setIsAgentMenuOpen(false);
                                 }}
                                 role="option"
-                                aria-selected={agent.id === currentAgent?.id}
-                                title={`${agent.displayName} (${agent.modelName})`}
+                                aria-selected={model.id === currentAgent?.id}
+                                title={`${model.displayName} (${model.modelName})`}
                               >
-                                <span className={styles.agentMenuPrimary}>{agent.displayName}</span>
+                                <span className={styles.agentMenuPrimary}>{model.displayName}</span>
                               </button>
                             ))}
                           </div>
@@ -340,12 +346,14 @@ const AIAssistant: React.FC<PluginContext> = ({ vm, workspace }) => {
                     editingAgent={editingAgent}
                     onSaveAgent={handleSaveAgent}
                     onDeleteAgent={handleDeleteAgent}
+                    onExportAgent={handleExportAgent}
+                    onImportAgent={handleImportAgents}
                     onEditAgent={setEditingAgent}
                     onClose={() => {
                       setShowSettings(false);
                       setEditingAgent(null);
                     }}
-                    onProviderChange={handleProviderChange}
+                    isFullScreen={containerInfo.width < 600 || containerInfo.height < 500}
                   />
                 )}
 

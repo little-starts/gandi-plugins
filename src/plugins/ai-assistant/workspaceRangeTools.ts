@@ -254,7 +254,7 @@ export const getBlocksRangeUCF = (
         blocks: blocksArray,
         statementBlockIds: result.rangeBlocks.map((block) => block.id),
       },
-    ]),
+    ], vm.runtime),
     blockCount: result.rangeBlocks.length,
     startBlockId,
     endBlockId,
@@ -323,7 +323,7 @@ export const replaceBlocksRangeByUCF = async (
   }
 
   try {
-    const newBlocksState = ucfToScratch(normalizeModelUCF(ucfString));
+    const newBlocksState = ucfToScratch(normalizeModelUCF(ucfString), { runtime: vm.runtime });
     if (!newBlocksState.length) {
       return buildFailureResult("Replacement UCF produced no blocks", "parse_replacement", {
         startBlockId,
