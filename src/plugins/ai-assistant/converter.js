@@ -129,23 +129,23 @@ const AllBlockInfo = {
     "sensing_answer": "回答",
     "sensing_username": "用户名",
     "sensing_userid": "用户 id",
-    "data_variable": "变量 [VARIABLE]（VARIABLE：string）",
-    "data_setvariableto": "将 [VARIABLE] 设为 [VALUE]（VARIABLE：string, VALUE：string）",
-    "data_changevariableby": "将 [VARIABLE] 增加 [VALUE]（VARIABLE：string, VALUE：number）",
-    "data_hidevariable": "隐藏变量 [VARIABLE]（VARIABLE：string）",
-    "data_showvariable": "显示变量 [VARIABLE]（VARIABLE：string）",
-    "data_listcontents": "列表 [LIST]（LIST：string）",
-    "data_addtolist": "将 [ITEM] 加入列表 [LIST]（ITEM：string, LIST：string）",
-    "data_deleteoflist": "删除列表 [LIST] 的第 [INDEX] 项（LIST：string, INDEX：string）",
-    "data_deletealloflist": "删除列表 [LIST] 的全部项目（LIST：string）",
-    "data_insertatlist": "在列表 [LIST] 的第 [INDEX] 项前插入 [ITEM]（LIST：string, INDEX：string, ITEM：string）",
-    "data_replaceitemoflist": "将列表 [LIST] 的第 [INDEX] 项替换为 [ITEM]（LIST：string, INDEX：string, ITEM：string）",
-    "data_itemoflist": "列表 [LIST] 的第 [INDEX] 项（LIST：string, INDEX：string）",
-    "data_itemnumoflist": "[ITEM] 在列表 [LIST] 中的编号（ITEM：string, LIST：string）",
-    "data_lengthoflist": "列表 [LIST] 的长度（LIST：string）",
-    "data_listcontainsitem": "列表 [LIST] 包含 [ITEM]？（LIST：string, ITEM：string）",
-    "data_hidelist": "隐藏列表 [LIST]（LIST：string）",
-    "data_showlist": "显示列表 [LIST]（LIST：string）",
+    "data_variable": "变量 [VARIABLE]（VARIABLE：variable）",
+    "data_setvariableto": "将 [VARIABLE] 设为 [VALUE]（VARIABLE：variable, VALUE：string）",
+    "data_changevariableby": "将 [VARIABLE] 增加 [VALUE]（VARIABLE：variable, VALUE：number）",
+    "data_hidevariable": "隐藏变量 [VARIABLE]（VARIABLE：variable）",
+    "data_showvariable": "显示变量 [VARIABLE]（VARIABLE：variable）",
+    "data_listcontents": "列表 [LIST]（LIST：list）",
+    "data_addtolist": "将 [ITEM] 加入列表 [LIST]（ITEM：string, LIST：list）",
+    "data_deleteoflist": "删除列表 [LIST] 的第 [INDEX] 项（LIST：list, INDEX：string）",
+    "data_deletealloflist": "删除列表 [LIST] 的全部项目（LIST：list）",
+    "data_insertatlist": "在列表 [LIST] 的第 [INDEX] 项前插入 [ITEM]（LIST：list, INDEX：string, ITEM：string）",
+    "data_replaceitemoflist": "将列表 [LIST] 的第 [INDEX] 项替换为 [ITEM]（LIST：list, INDEX：string, ITEM：string）",
+    "data_itemoflist": "列表 [LIST] 的第 [INDEX] 项（LIST：list, INDEX：string）",
+    "data_itemnumoflist": "[ITEM] 在列表 [LIST] 中的编号（ITEM：string, LIST：list）",
+    "data_lengthoflist": "列表 [LIST] 的长度（LIST：list）",
+    "data_listcontainsitem": "列表 [LIST] 包含 [ITEM]？（LIST：list, ITEM：string）",
+    "data_hidelist": "隐藏列表 [LIST]（LIST：list）",
+    "data_showlist": "显示列表 [LIST]（LIST：list）",
     "procedures_definition": "自定义积木定义",
     "procedures_call": "调用自定义积木 [PROCEDURE]（PROCEDURE：string）",
     "procedures_call_with_return": "调用自定义积木 [PROCEDURE] 并返回（PROCEDURE：string）",
@@ -186,27 +186,75 @@ export function callGetBlockInfo(opcode, rt) {
 }
 
 function getExpectedShadowType(opcode, inputName, rt) {
+    const menuInfo = getExpectedShadowInfo(opcode, inputName, rt);
+    if (menuInfo) return menuInfo.opcode;
     const info = getBlockInfo(opcode, rt);
-    if (inputName === 'BROADCAST_INPUT' && (opcode === 'event_broadcast' || opcode === 'event_broadcastandwait')) {
-        return 'event_broadcast_menu';
-    }
-    const argInfo = info?.inputs?.[inputName];
+    const argInfo = info?.inputs?.[inputName] || info?.fields?.[inputName];
     if (!info.found || !argInfo) return 'text';
 
     const t = String(argInfo.type).toLowerCase();
     if (t === 'number' || t === 'n') return 'math_number';
     if (t === 'boolean' || t === 'b' || t === 'bool') return null;
+    return 'text';
+}
+
+function getExpectedShadowInfo(opcode, inputName, rt) {
+    const info = getBlockInfo(opcode, rt);
+    if (inputName === 'BROADCAST_INPUT' && (opcode === 'event_broadcast' || opcode === 'event_broadcastandwait')) {
+        return { opcode: 'event_broadcast_menu', fieldName: 'BROADCAST_OPTION' };
+    }
+    const argInfo = info?.inputs?.[inputName] || info?.fields?.[inputName];
     if (argInfo && argInfo.menu) {
         const activeRuntime = rt || runtime;
-        const candidate = `${opcode}_menu`;
-        const ok = Boolean(
-            (activeRuntime && activeRuntime._primitives && activeRuntime._primitives[candidate]) ||
-            (activeRuntime && activeRuntime.scratchBlocks && activeRuntime.scratchBlocks.Blocks && activeRuntime.scratchBlocks.Blocks[candidate]) ||
-            (typeof window !== 'undefined' && window.ScratchBlocks && window.ScratchBlocks.Blocks && window.ScratchBlocks.Blocks[candidate])
-        );
-        if (ok) return candidate;
+        const namespace = String(opcode).includes('_') ? String(opcode).split('_')[0] : '';
+        const candidates = [
+            `${opcode}_menu`,
+            namespace ? `${namespace}_menu_${argInfo.menu}` : '',
+            `${argInfo.menu}_menu`,
+            argInfo.menu
+        ].filter(Boolean);
+        const candidate = candidates.find(item => Boolean(
+            (activeRuntime && activeRuntime._primitives && activeRuntime._primitives[item]) ||
+            (activeRuntime && activeRuntime.scratchBlocks && activeRuntime.scratchBlocks.Blocks && activeRuntime.scratchBlocks.Blocks[item]) ||
+            (typeof window !== 'undefined' && window.ScratchBlocks && window.ScratchBlocks.Blocks && window.ScratchBlocks.Blocks[item])
+        ));
+        if (candidate) {
+            return {
+                opcode: candidate,
+                fieldName: getMenuShadowFieldName(candidate, inputName, argInfo.menu)
+            };
+        }
     }
-    return 'text';
+    return null;
+}
+
+function getMenuShadowFieldName(menuOpcode, inputName, menuName) {
+    if (menuOpcode === 'event_broadcast_menu') return 'BROADCAST_OPTION';
+    if (menuOpcode === 'pen_menu_colorParam') return 'colorParam';
+    return menuName || inputName;
+}
+
+function isEventHatOpcode(opcode) {
+    const normalized = String(opcode || '');
+    return /^event_when/.test(normalized) || normalized === 'control_start_as_clone';
+}
+
+function normalizeDslArgKey(opcode, key) {
+    const normalizedOpcode = String(opcode || '');
+    const normalizedKey = String(key || '');
+    const aliases = {
+        operator_add: { OPERAND1: 'NUM1', OPERAND2: 'NUM2', VALUE1: 'NUM1', VALUE2: 'NUM2' },
+        operator_subtract: { OPERAND1: 'NUM1', OPERAND2: 'NUM2', VALUE1: 'NUM1', VALUE2: 'NUM2' },
+        operator_multiply: { OPERAND1: 'NUM1', OPERAND2: 'NUM2', VALUE1: 'NUM1', VALUE2: 'NUM2' },
+        operator_divide: { OPERAND1: 'NUM1', OPERAND2: 'NUM2', VALUE1: 'NUM1', VALUE2: 'NUM2' },
+        operator_mod: { OPERAND1: 'NUM1', OPERAND2: 'NUM2', VALUE1: 'NUM1', VALUE2: 'NUM2' },
+        operator_gt: { NUM1: 'OPERAND1', NUM2: 'OPERAND2', VALUE1: 'OPERAND1', VALUE2: 'OPERAND2' },
+        operator_lt: { NUM1: 'OPERAND1', NUM2: 'OPERAND2', VALUE1: 'OPERAND1', VALUE2: 'OPERAND2' },
+        operator_equals: { NUM1: 'OPERAND1', NUM2: 'OPERAND2', VALUE1: 'OPERAND1', VALUE2: 'OPERAND2' },
+        operator_and: { CONDITION1: 'OPERAND1', CONDITION2: 'OPERAND2' },
+        operator_or: { CONDITION1: 'OPERAND1', CONDITION2: 'OPERAND2' },
+    };
+    return aliases[normalizedOpcode]?.[normalizedKey] || normalizedKey;
 }
 
 // Generate a random Scratch-like ID
@@ -227,16 +275,56 @@ export function jsonToJs(jsonArray) {
     const includeShadows = options.includeShadows === true;
     const includeBlockIds = options.includeBlockIds === true;
     const includePosition = options.includePosition === true;
+    const commentsByBlockId = options.commentsByBlockId || {};
     const blocks = {};
     jsonArray.forEach(b => blocks[b.id] = b);
 
     let jsCode = '';
+    function getCommentTextForBlock(block) {
+        const direct = block && typeof block.commentText === 'string' ? block.commentText : null;
+        const fromMap = block && commentsByBlockId ? commentsByBlockId[block.id] : null;
+        const text = direct !== null
+            ? direct
+            : (typeof fromMap === 'string' ? fromMap : (fromMap && typeof fromMap.text === 'string' ? fromMap.text : null));
+        return typeof text === 'string' && text.trim() ? text : '';
+    }
+    function renderLeadingComment(text, indent) {
+        return String(text)
+            .replace(/\r\n?/g, '\n')
+            .split('\n')
+            .map(line => `${indent}// ${line}`)
+            .join('\n') + '\n';
+    }
     function safeGetBlockInfoForJsonToJs(opcode) {
         try {
             return callGetBlockInfo(opcode, runtime);
         } catch {
             return { opcode, found: false, fields: {}, inputs: {}, substacks: [], extensionId: null };
         }
+    }
+    function resolveVariableFieldValueForJs(fieldKey, fieldObj) {
+        if (!fieldObj || !fieldObj.id) return fieldObj ? fieldObj.value : undefined;
+        const inferredType =
+            typeof fieldObj.variableType === 'string'
+                ? fieldObj.variableType
+                : (fieldKey === 'LIST' || fieldKey === 'LIST_MENU' ? 'list' : (fieldKey === 'VARIABLE' ? '' : null));
+        if (inferredType === null) return fieldObj.value;
+
+        const targets = Array.isArray(runtime?.targets) ? runtime.targets : [];
+        for (const target of targets) {
+            const variables = target?.variables || {};
+            const direct = variables[fieldObj.id];
+            if (direct && (direct.type || '') === inferredType && typeof direct.name === 'string') {
+                return direct.name;
+            }
+            const matched = Object.values(variables).find(variable =>
+                variable && variable.id === fieldObj.id && (variable.type || '') === inferredType && typeof variable.name === 'string'
+            );
+            if (matched) {
+                return matched.name;
+            }
+        }
+        return fieldObj.value;
     }
     function escapeProccodeForDefine(s) {
         return String(s)
@@ -276,7 +364,12 @@ export function jsonToJs(jsonArray) {
             const block = blocks[currentId];
             if (!block) break;
 
-            if (block.opcode.startsWith('event_') || block.opcode === 'procedures_definition') {
+            const commentText = getCommentTextForBlock(block);
+            if (commentText) {
+                code += renderLeadingComment(commentText, indent);
+            }
+
+            if (isEventHatOpcode(block.opcode) || block.opcode === 'procedures_definition') {
                 // Wrap the rest of the stack inside the event's callback
                 const nextId = block.next;
                 const innerCode = nextId ? parseStack(nextId, indent + '    ') : '';
@@ -350,7 +443,7 @@ export function jsonToJs(jsonArray) {
         
         // 1. Fields
         for (const [key, fieldObj] of Object.entries(block.fields || {})) {
-            const valStr = JSON.stringify(fieldObj.value);
+            const valStr = JSON.stringify(resolveVariableFieldValueForJs(key, fieldObj));
             const finalKey = `$field_${key}`;
             if (/^[a-zA-Z_$][0-9a-zA-Z_$]*$/.test(finalKey)) {
                 args.push(`${finalKey}: ${valStr}`);
@@ -416,19 +509,20 @@ export function jsonToJs(jsonArray) {
             } else {
                 const innerBlock = blocks[inputObj.block];
                 if (innerBlock) {
-                    const fieldSpec = bInfo && bInfo.fields ? bInfo.fields[key] : null;
+                    const fieldSpec = bInfo ? ((bInfo.fields && bInfo.fields[key]) || (bInfo.inputs && bInfo.inputs[key])) : null;
                     const menuType = fieldSpec && fieldSpec.menuType ? String(fieldSpec.menuType) : null;
                     const hasAnyRealInput = innerBlock.inputs && Object.values(innerBlock.inputs).some(v => v && v.block);
+                    const menuField = innerBlock.fields && (innerBlock.fields[key] || Object.values(innerBlock.fields)[0]);
                     const looksLikeMenu =
                         innerBlock.shadow === true &&
                         innerBlock.fields &&
-                        innerBlock.fields[key] &&
+                        menuField &&
                         !hasAnyRealInput &&
                         (String(innerBlock.opcode).endsWith('_menu') || String(innerBlock.opcode).includes('menu') || String(innerBlock.opcode).endsWith('options'));
                     const shouldCompressToField = fieldSpec && (fieldSpec.menu || menuType === 'placeable') && looksLikeMenu;
                     if (shouldCompressToField) {
-                        const valStr = JSON.stringify(innerBlock.fields[key].value);
-                        const finalKey = `$field_${key}`;
+                        const valStr = JSON.stringify(menuField.value);
+                        const finalKey = key === 'BROADCAST_INPUT' ? key : `$field_${key}`;
                         if (/^[a-zA-Z_$][0-9a-zA-Z_$]*$/.test(finalKey)) {
                             inputArgs.push(`${finalKey}: ${valStr}`);
                         } else {
@@ -500,7 +594,8 @@ export function jsonToJs(jsonArray) {
 export function jsToJson(jsCode) {
     const options = arguments.length > 1 && arguments[1] && typeof arguments[1] === 'object' ? arguments[1] : {};
     const activeRuntime = options.runtime || runtime;
-    const ast = acorn.parse(jsCode, { ecmaVersion: 2020 });
+    const parsedComments = [];
+    const ast = acorn.parse(jsCode, { ecmaVersion: 2020, locations: true, onComment: parsedComments });
     const blocks = [];
     let topLevelIndex = 0;
     const procArgIdsByProccode = new Map();
@@ -514,17 +609,31 @@ export function jsToJson(jsCode) {
         const pad = b64.length % 4;
         if (pad) b64 += '='.repeat(4 - pad);
         try {
-            return Buffer.from(b64, 'base64').toString('utf-8');
+            if (typeof atob === 'function') {
+                const binary = atob(b64);
+                const bytes = Array.from(binary, ch => ch.charCodeAt(0));
+                if (typeof TextDecoder === 'function') {
+                    return new TextDecoder('utf-8').decode(new Uint8Array(bytes));
+                }
+                return decodeURIComponent(bytes.map(byte => `%${byte.toString(16).padStart(2, '0')}`).join(''));
+            }
+            if (typeof Buffer !== 'undefined') {
+                return Buffer.from(b64, 'base64').toString('utf-8');
+            }
+            return null;
         } catch (e) {
             return null;
         }
     }
 
     function stableScratchId(seedString) {
-        const buf = Buffer.from(String(seedString), 'utf-8');
+        const text = String(seedString);
         let h = 0x811c9dc5;
-        for (const b of buf) {
-            h ^= b;
+        for (let i = 0; i < text.length; i++) {
+            const code = text.charCodeAt(i);
+            h ^= code & 0xff;
+            h = Math.imul(h, 0x01000193) >>> 0;
+            h ^= (code >>> 8) & 0xff;
             h = Math.imul(h, 0x01000193) >>> 0;
         }
         let x = h || 1;
@@ -554,7 +663,7 @@ export function jsToJson(jsCode) {
         const key = prefix + ':' + String(name);
         const existing = fieldIdByTypeAndName.get(key);
         if (existing) return existing;
-        const id = randomScratchId();
+        const id = stableScratchId(key);
         fieldIdByTypeAndName.set(key, id);
         return id;
     }
@@ -672,6 +781,41 @@ export function jsToJson(jsCode) {
         return null;
     }
 
+    function isMetaComment(text) {
+        const normalized = String(text || '').trim();
+        return (
+            /^@script\b/i.test(normalized) ||
+            /^blockId\s*:/i.test(normalized) ||
+            /^@scratch-target\b/i.test(normalized) ||
+            /^path\s*:/i.test(normalized) ||
+            /^targetId\s*:/i.test(normalized) ||
+            /^targetName\s*:/i.test(normalized) ||
+            /^targetType\s*:/i.test(normalized) ||
+            /^This is a virtual Scratch file/i.test(normalized)
+        );
+    }
+
+    function getLeadingCommentText(stmt) {
+        if (!options.includeComments || !stmt || typeof stmt.start !== 'number') return '';
+        const leading = [];
+        let cursor = stmt.start;
+
+        for (let i = parsedComments.length - 1; i >= 0; i--) {
+            const comment = parsedComments[i];
+            if (!comment || typeof comment.end !== 'number' || comment.end > cursor) continue;
+            const between = jsCode.slice(comment.end, cursor);
+            if (!/^[\s;]*$/.test(between)) break;
+
+            const text = String(comment.value || '').trim();
+            if (text && !isMetaComment(text)) {
+                leading.unshift(text);
+            }
+            cursor = comment.start;
+        }
+
+        return leading.join('\n').trim();
+    }
+
     for (const stmt of ast.body) {
         if (stmt.type !== 'ExpressionStatement') continue;
         const expr = stmt.expression;
@@ -732,6 +876,71 @@ export function jsToJson(jsCode) {
         }
         return null;
     }
+
+    function getDefaultMenuValue(fieldName, fieldSpec) {
+        if (!fieldSpec || typeof fieldSpec !== 'object') return '';
+        if (fieldSpec.defaultValue !== undefined && fieldSpec.defaultValue !== null) {
+            return fieldSpec.defaultValue;
+        }
+        const options = Array.isArray(fieldSpec.menuOptions) ? fieldSpec.menuOptions : null;
+        if (options && options.length > 0) {
+            const optionWithValue = options.find(option => option && typeof option === 'object' && Object.prototype.hasOwnProperty.call(option, 'value'));
+            if (optionWithValue) return optionWithValue.value;
+            return options[0];
+        }
+        const normalizedFieldName = String(fieldName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const normalizedMenuName = String(fieldSpec.menu || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (normalizedFieldName === 'colorparam' || normalizedMenuName === 'colorparam') return 'color';
+        return '';
+    }
+
+    function addPlaceableMenuField(block, fieldName, value) {
+        const menuInfo = getExpectedShadowInfo(block.opcode, fieldName, activeRuntime);
+        if (!menuInfo?.opcode) {
+            block.fields[fieldName] = { name: fieldName, value: String(value ?? '') };
+            return;
+        }
+
+        const menuId = generateId();
+        blocks.push({
+            id: menuId,
+            opcode: menuInfo.opcode,
+            inputs: {},
+            fields: { [menuInfo.fieldName]: { name: menuInfo.fieldName, value: String(value ?? '') } },
+            next: null,
+            topLevel: false,
+            parent: block.id,
+            shadow: true,
+            hidden: false,
+            locked: false,
+            collapsed: false
+        });
+        block.inputs[fieldName] = { name: fieldName, block: menuId, shadow: menuId };
+    }
+
+    function addMissingMenuDefaults(block, blockInfo) {
+        if (!block || !blockInfo || !blockInfo.fields) return;
+
+        for (const [fieldName, fieldSpec] of Object.entries(blockInfo.fields)) {
+            if (!fieldSpec || typeof fieldSpec !== 'object') continue;
+
+            const fieldType = String(fieldSpec.type || '').toLowerCase();
+            if (fieldType === 'variable' || fieldType === 'list') continue;
+
+            const hasMenu = Boolean(fieldSpec.menu || fieldSpec.menuType || Array.isArray(fieldSpec.menuOptions));
+            if (!hasMenu) continue;
+            if (Object.prototype.hasOwnProperty.call(block.fields || {}, fieldName)) continue;
+            if (Object.prototype.hasOwnProperty.call(block.inputs || {}, fieldName)) continue;
+
+            const value = getDefaultMenuValue(fieldName, fieldSpec);
+            if (fieldSpec.menuType === 'placeable') {
+                addPlaceableMenuField(block, fieldName, value);
+            } else {
+                block.fields[fieldName] = { name: fieldName, value: String(value ?? '') };
+            }
+        }
+    }
+
     // Helper to evaluate member expression chain to string
     function evaluateMemberExpression(node) {
         if (node.type === 'Identifier') return node.name;
@@ -747,12 +956,18 @@ export function jsToJson(jsCode) {
         let prevId = null;
         const linkStatements = !isTopLevel;
         for (const stmt of statements) {
-            if (stmt.type !== 'ExpressionStatement') continue;
-            if (stmt.expression.type !== 'CallExpression' && stmt.expression.type !== 'MemberExpression') continue;
+            if (stmt.type === 'EmptyStatement') continue;
+            if (stmt.type !== 'ExpressionStatement') {
+                throw new Error(`unsupported_statement: ${stmt.type}. Scratch virtual JS only supports block calls; use data.setvariableto/data.variable instead of JS variables or control flow.`);
+            }
+            if (stmt.expression.type !== 'CallExpression' && stmt.expression.type !== 'MemberExpression') {
+                throw new Error(`unsupported_expression: ${stmt.expression.type}. Each statement must be one Scratch block call.`);
+            }
 
             // In case of an event wrapper without arguments (if any), the callee is just a MemberExpression
             const expr = stmt.expression.type === 'CallExpression' ? stmt.expression : { callee: stmt.expression, arguments: [] };
             const blockId = generateId();
+            const leadingCommentText = getLeadingCommentText(stmt);
 
             if (!firstId) firstId = blockId;
             
@@ -775,6 +990,9 @@ export function jsToJson(jsCode) {
                 locked: false,
                 collapsed: false
             };
+            if (leadingCommentText) {
+                block.commentText = leadingCommentText;
+            }
             if (isTopLevel) {
                 block.x = 50;
                 block.y = 50 + topLevelIndex * 200;
@@ -831,7 +1049,7 @@ export function jsToJson(jsCode) {
                 }
                 
                 // Check if it's an event wrapper or definition wrapper with a callback
-                if ((block.opcode.startsWith('event_') || block.opcode === 'define') && callbackNode) {
+                if ((isEventHatOpcode(block.opcode) || block.opcode === 'define') && callbackNode) {
                     hasCallback = true;
                     const valNode = callbackNode;
                     const subStatements = valNode.body.type === 'BlockStatement' ? valNode.body.body : [ { type: 'ExpressionStatement', expression: valNode.body } ];
@@ -840,7 +1058,7 @@ export function jsToJson(jsCode) {
                 }
             }
             
-            if (!hasCallback && block.opcode.startsWith('event_') && argsObject) {
+            if (!hasCallback && isEventHatOpcode(block.opcode) && argsObject) {
                 for (const prop of argsObject.properties) {
                     const key = prop.key.name || prop.key.value;
                     const valNode = prop.value;
@@ -905,6 +1123,12 @@ export function jsToJson(jsCode) {
                         } else if (key === 'info') {
                             const val = evaluateLiteral(prop.value);
                             if (Array.isArray(val)) infoArray = val.map(String);
+                        } else if (key === '$xy') {
+                            const coords = evaluateLiteral(prop.value);
+                            if (coords && typeof coords === 'object') {
+                                if (coords.x !== undefined) block.x = coords.x;
+                                if (coords.y !== undefined) block.y = coords.y;
+                            }
                         } else {
                             const valNode = prop.value;
                             const val = evaluateLiteral(valNode);
@@ -1007,7 +1231,8 @@ export function jsToJson(jsCode) {
 
             if (argsObject) {
                 for (const prop of argsObject.properties) {
-                    const key = prop.key.name || prop.key.value;
+                    const rawKey = String(prop.key.name || prop.key.value);
+                    const key = rawKey.startsWith('$') ? rawKey : normalizeDslArgKey(block.opcode, rawKey);
                     const valNode = prop.value;
                     
                     if (eventBodyKey !== null && key === eventBodyKey && valNode && valNode.type === 'ArrowFunctionExpression') {
@@ -1015,7 +1240,8 @@ export function jsToJson(jsCode) {
                     }
 
                     if (key.startsWith('$shadow_')) {
-                        pendingShadows[key.replace('$shadow_', '')] = valNode;
+                        const shadowKey = key.replace('$shadow_', '');
+                        pendingShadows[normalizeDslArgKey(block.opcode, shadowKey)] = valNode;
                         continue;
                     }
                     
@@ -1067,13 +1293,15 @@ export function jsToJson(jsCode) {
                         
                         const fieldSpec = blockInfo && blockInfo.fields ? blockInfo.fields[actualKey] : null;
                         if (fieldSpec && fieldSpec.menuType === 'placeable' && (typeof literalValue === 'string' || typeof literalValue === 'number')) {
-                            const menuOpcode = `${block.opcode}_menu`;
+                            const menuInfo = getExpectedShadowInfo(block.opcode, actualKey, activeRuntime);
+                            const menuOpcode = menuInfo?.opcode || `${block.opcode}_menu`;
+                            const menuFieldName = menuInfo?.fieldName || actualKey;
                             const menuId = generateId();
                             blocks.push({
                                 id: menuId,
                                 opcode: menuOpcode,
                                 inputs: {},
-                                fields: { [actualKey]: { name: actualKey, value: String(literalValue) } },
+                                fields: { [menuFieldName]: { name: menuFieldName, value: String(literalValue) } },
                                 next: null,
                                 topLevel: false,
                                 parent: blockId,
@@ -1278,6 +1506,7 @@ export function jsToJson(jsCode) {
                     else if (valNode.type === 'Literal' || (valNode.type === 'UnaryExpression' && valNode.operator === '-')) {
                         const val = evaluateLiteral(valNode);
                         const shadowId = generateId();
+                        const expectedShadowInfo = getExpectedShadowInfo(block.opcode, key, activeRuntime);
                         const expectedType = getExpectedShadowType(block.opcode, key, activeRuntime);
                         const v = val === null || val === undefined ? "" : String(val);
                         if (expectedType === null) {
@@ -1311,12 +1540,13 @@ export function jsToJson(jsCode) {
                                 collapsed: false
                             });
                         } else if (expectedType && expectedType.endsWith('_menu')) {
+                            const menuFieldName = expectedShadowInfo?.fieldName || key;
                             blocks.push({
                                 id: shadowId,
                                 opcode: expectedType,
                                 inputs: {},
                                 fields: {
-                                    [key]: { name: key, value: v }
+                                    [menuFieldName]: { name: menuFieldName, value: v }
                                 },
                                 next: null,
                                 topLevel: false,
@@ -1365,6 +1595,7 @@ export function jsToJson(jsCode) {
                                 innerBlock.shadow = true;
                                 shadowId = subBlockId;
                             } else if (block.opcode !== 'procedures_prototype' && block.opcode !== 'procedures_definition') {
+                                const expectedShadowInfo = getExpectedShadowInfo(block.opcode, key, activeRuntime);
                                 const expectedType = getExpectedShadowType(block.opcode, key, activeRuntime);
                                 if (expectedType) {
                                     shadowId = generateId();
@@ -1390,12 +1621,13 @@ export function jsToJson(jsCode) {
                                             collapsed: false
                                         });
                                     } else if (expectedType.endsWith('_menu')) {
+                                        const menuFieldName = expectedShadowInfo?.fieldName || key;
                                         blocks.push({
                                             id: shadowId,
                                             opcode: expectedType,
                                             inputs: {},
                                             fields: {
-                                                [key]: { name: key, value: "" }
+                                                [menuFieldName]: { name: menuFieldName, value: "" }
                                             },
                                             next: null,
                                             topLevel: false,
@@ -1466,12 +1698,22 @@ export function jsToJson(jsCode) {
             }
 
             if (!hasCallback) {
+                const singleCallbackArg = expr.arguments.length === 1 && expr.arguments[0].type === 'ArrowFunctionExpression';
+                const secondCallbackArg = expr.arguments.length > 1 && expr.arguments[1].type === 'ArrowFunctionExpression';
                 if (expr.arguments.length === 1 && expr.arguments[0].type === 'ArrowFunctionExpression' && allowedSubstacks.length > 0) {
                     throw new Error(JSON.stringify({
                         error: 'invalid_cblock_call_form',
                         opcode: block.opcode,
                         blockId,
                         expectedSubstacks: allowedSubstacks,
+                        blockInfo
+                    }));
+                } else if ((singleCallbackArg || secondCallbackArg) && blockInfo && blockInfo.found && allowedSubstacks.length === 0) {
+                    throw new Error(JSON.stringify({
+                        error: 'invalid_callback_for_command',
+                        opcode: block.opcode,
+                        blockId,
+                        message: 'This block is not an event hat or C-block. Put following statements after it instead of inside a callback.',
                         blockInfo
                     }));
                 } else if (expr.arguments.length === 1 && expr.arguments[0].type === 'ArrowFunctionExpression') {
@@ -1487,6 +1729,7 @@ export function jsToJson(jsCode) {
                 }
             }
 
+            addMissingMenuDefaults(block, blockInfo);
             blocks.push(block);
             prevId = linkStatements ? blockId : null;
         }
@@ -1494,8 +1737,19 @@ export function jsToJson(jsCode) {
         return firstId;
     }
 
-    // Start parsing from top-level Program body
-    parseBlockStatement(ast.body, null, true);
+    // Start parsing from top-level Program body.
+    if (options.linkTopLevelStatements === true) {
+        const firstTopLevelId = parseBlockStatement(ast.body, null, false);
+        const firstTopLevelBlock = blocks.find(b => b.id === firstTopLevelId);
+        if (firstTopLevelBlock) {
+            firstTopLevelBlock.topLevel = true;
+            firstTopLevelBlock.parent = null;
+            if (firstTopLevelBlock.x === undefined) firstTopLevelBlock.x = 50;
+            if (firstTopLevelBlock.y === undefined) firstTopLevelBlock.y = 50;
+        }
+    } else {
+        parseBlockStatement(ast.body, null, true);
+    }
 
     const originalOrder = new Map();
     for (let i = 0; i < blocks.length; i++) originalOrder.set(blocks[i].id, i);
@@ -1592,4 +1846,23 @@ export function jsToJson(jsCode) {
     }
 
     return blocks;
+}
+
+export function jsToJsonWithComments(jsCode) {
+    const options = arguments.length > 1 && arguments[1] && typeof arguments[1] === 'object' ? arguments[1] : {};
+    const blocks = jsToJson(jsCode, { ...options, includeComments: true });
+    return {
+        blocks,
+        comments: blocks
+            .filter(block => typeof block.commentText === 'string' && block.commentText.trim())
+            .map(block => ({
+                blockId: block.id,
+                text: block.commentText,
+                minimized: false,
+                width: 200,
+                height: 160,
+                x: typeof block.x === 'number' ? block.x + 32 : 32,
+                y: typeof block.y === 'number' ? block.y + 32 : 32
+            }))
+    };
 }

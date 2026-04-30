@@ -1,7 +1,10 @@
 import * as React from "react";
-import styles from "../styles.less";
+import settings from "../ui/Settings.module.less";
 import { Agent, AgentModel } from "../types";
 import { PROVIDER_DEFAULT_URLS } from "../constants";
+
+type SettingsSection = "agents" | "appearance" | "about";
+type ThemeMode = "dark" | "light";
 
 interface SettingsModalProps {
   agents: Agent[];
@@ -11,9 +14,37 @@ interface SettingsModalProps {
   onExportAgent: (id: string) => void;
   onImportAgent: (file: File) => Promise<void>;
   onEditAgent: (agent: Agent | null) => void;
+  themeMode: ThemeMode;
+  onThemeModeChange: (theme: ThemeMode) => void;
   onClose: () => void;
   isFullScreen?: boolean;
 }
+
+const PROVIDER_LABELS: Record<Agent["provider"], string> = {
+  openai: "OpenAI",
+  zhipu: "智谱清言",
+  deepseek: "DeepSeek",
+  anthropic: "Anthropic",
+  google: "Google",
+  azure: "Azure",
+  custom: "自定义 OpenAI",
+  custom_anthropic: "自定义 Anthropic",
+};
+
+const createDefaultModel = (): AgentModel => ({
+  id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+  name: "My GPT-4o",
+  modelId: "gpt-4o",
+});
+
+const getDefaultModelForProvider = (provider: Agent["provider"]) => {
+  if (provider === "zhipu") return { name: "GLM-4", modelId: "glm-4" };
+  if (provider === "deepseek") return { name: "DeepSeek Chat", modelId: "deepseek-chat" };
+  if (provider === "anthropic" || provider === "custom_anthropic") {
+    return { name: "Claude 3.5 Sonnet", modelId: "claude-3-5-sonnet-latest" };
+  }
+  return { name: "GPT-4o", modelId: "gpt-4o" };
+};
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   agents,
@@ -23,285 +54,379 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onExportAgent,
   onImportAgent,
   onEditAgent,
+  themeMode,
+  onThemeModeChange,
   onClose,
   isFullScreen,
 }) => {
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
-
+  const [activeSection, setActiveSection] = React.useState<SettingsSection>("agents");
   const [formData, setFormData] = React.useState<Partial<Agent>>({ provider: "openai" });
-  const [models, setModels] = React.useState<AgentModel[]>([]);
+  const [models, setModels] = React.useState<AgentModel[]>([createDefaultModel()]);
 
   React.useEffect(() => {
     if (editingAgent) {
+      setActiveSection("agents");
       setFormData({
         provider: editingAgent.provider,
         name: editingAgent.name || (editingAgent as any).displayName || "",
         baseUrl: editingAgent.baseUrl,
         apiKey: editingAgent.apiKey,
       });
-      setModels(editingAgent.models || [
-        {
-          id: `${editingAgent.id}-model`,
-          name: (editingAgent as any).displayName || "Default Model",
-          modelId: (editingAgent as any).modelName || "gpt-3.5-turbo",
-          maxTokens: (editingAgent as any).maxTokens,
-        }
-      ]);
-    } else {
-      setFormData({ provider: "openai" });
-      setModels([{ id: Date.now().toString(), name: "My GPT-4o", modelId: "gpt-4o" }]);
-    }
-  }, [editingAgent]);
-
-  const handleProviderChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const provider = e.target.value as Agent["provider"];
-    let baseUrl = formData.baseUrl || "";
-    
-    let defaultModelId = "gpt-4o";
-    let defaultModelName = "My Model";
-
-    if (provider === "zhipu") {
-      if (!baseUrl || baseUrl === "https://api.openai.com/v1") baseUrl = "https://open.bigmodel.cn/api/paas/v4";
-      defaultModelId = "glm-4";
-      defaultModelName = "GLM-4";
-    } else if (provider === "deepseek") {
-      if (!baseUrl || baseUrl === "https://api.openai.com/v1") baseUrl = "https://api.deepseek.com";
-      defaultModelId = "deepseek-chat";
-      defaultModelName = "DeepSeek Chat";
-    } else if (provider === "anthropic") {
-      if (!baseUrl || baseUrl === "https://api.openai.com/v1") baseUrl = "https://api.anthropic.com/v1";
-      defaultModelId = "claude-3-5-sonnet-latest";
-      defaultModelName = "Claude 3.5 Sonnet";
-    } else if (provider === "openai") {
-      if (!baseUrl || baseUrl.includes("bigmodel") || baseUrl.includes("deepseek")) baseUrl = "https://api.openai.com/v1";
-      defaultModelId = "gpt-4o";
-      defaultModelName = "GPT-4o";
-    } else if (provider === "custom" || provider === "custom_anthropic") {
-      defaultModelId = provider === "custom_anthropic" ? "claude-3-5-sonnet-latest" : "gpt-4o-mini";
-      defaultModelName = "Custom Model";
-    }
-
-    setFormData((prev) => ({ ...prev, provider, baseUrl }));
-    if (models.length === 1 && (!models[0].modelId || models[0].modelId.startsWith("gpt-") || models[0].modelId.startsWith("glm-") || models[0].modelId.startsWith("deepseek"))) {
-      setModels([{ id: models[0].id, name: defaultModelName, modelId: defaultModelId, maxTokens: models[0].maxTokens }]);
-    }
-  };
-
-  const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const provider = formData.provider as Agent["provider"];
-    let baseUrl = formData.baseUrl || "";
-
-    if (!baseUrl.trim()) {
-      baseUrl = PROVIDER_DEFAULT_URLS[provider] || "";
-    }
-
-    const newAgent: Agent = {
-      id: editingAgent?.id || Date.now().toString(),
-      provider: provider,
-      baseUrl: baseUrl,
-      apiKey: formData.apiKey || "",
-      name: formData.name || "",
-      models: models.filter(m => m.name.trim() && m.modelId.trim()),
-    };
-
-    if (newAgent.models.length === 0) {
-      window.alert("请至少添加一个有效的模型");
+      setModels(
+        editingAgent.models || [
+          {
+            id: `${editingAgent.id}-model`,
+            name: (editingAgent as any).displayName || "Default Model",
+            modelId: (editingAgent as any).modelName || "gpt-3.5-turbo",
+            maxTokens: (editingAgent as any).maxTokens,
+          },
+        ],
+      );
       return;
     }
 
-    onSaveAgent(newAgent);
-  };
+    setFormData({ provider: "openai", baseUrl: PROVIDER_DEFAULT_URLS.openai });
+    setModels([createDefaultModel()]);
+  }, [editingAgent]);
 
-  const addModel = () => {
-    setModels([...models, { id: Date.now().toString(), name: "", modelId: "" }]);
+  const handleProviderChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const provider = event.target.value as Agent["provider"];
+    const defaults = getDefaultModelForProvider(provider);
+    const baseUrl = PROVIDER_DEFAULT_URLS[provider] || "";
+    setFormData((previous) => ({ ...previous, provider, baseUrl }));
+
+    if (models.length === 1) {
+      setModels([{ ...models[0], ...defaults }]);
+    }
   };
 
   const updateModel = (id: string, field: keyof AgentModel, value: string | number | undefined) => {
-    setModels(models.map(m => m.id === id ? { ...m, [field]: value } : m));
+    setModels((previous) => previous.map((model) => (model.id === id ? { ...model, [field]: value } : model)));
   };
 
   const removeModel = (id: string) => {
-    setModels(models.filter(m => m.id !== id));
+    setModels((previous) => previous.filter((model) => model.id !== id));
   };
 
-  const [isWideScreen, setIsWideScreen] = React.useState(false);
+  const addModel = () => {
+    setModels((previous) => [...previous, createDefaultModel()]);
+  };
 
-  React.useEffect(() => {
-    const handleResize = () => {
-      // Assuming parent container logic updates something, we can use window or just rely on CSS
-      // But since we need dynamic class based on width > 600px
-      const modalElement = document.getElementById('ai-assistant-settings-modal');
-      if (modalElement) {
-        setIsWideScreen(modalElement.clientWidth > 500);
-      }
-    };
-    
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    // Also set up a ResizeObserver for the specific modal
-    const observer = new ResizeObserver(() => {
-      handleResize();
+  const handleSave = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const provider = formData.provider || "openai";
+    const validModels = models.filter((model) => model.name.trim() && model.modelId.trim());
+
+    if (validModels.length === 0) {
+      window.alert("请至少添加一个有效模型");
+      return;
+    }
+
+    onSaveAgent({
+      id: editingAgent?.id || `${Date.now()}`,
+      provider,
+      baseUrl: formData.baseUrl?.trim() || PROVIDER_DEFAULT_URLS[provider] || "",
+      apiKey: formData.apiKey || "",
+      name: formData.name?.trim() || PROVIDER_LABELS[provider] || "Custom Agent",
+      models: validModels,
     });
-    
-    // Will observe when rendered
-    setTimeout(() => {
-      const modalElement = document.getElementById('ai-assistant-settings-modal');
-      if (modalElement) observer.observe(modalElement);
-    }, 100);
+  };
 
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      observer.disconnect();
-    };
-  }, []);
+  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      await onImportAgent(file);
+      setActiveSection("agents");
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "导入失败");
+    } finally {
+      event.target.value = "";
+    }
+  };
+
+  const sectionTitle =
+    activeSection === "agents" ? "模型与 Agent" : activeSection === "appearance" ? "外观" : "关于";
+  const sectionDescription =
+    activeSection === "agents"
+      ? "管理供应商、API Key、Base URL 和可选模型。"
+      : activeSection === "appearance"
+        ? "切换插件界面的主题外观。"
+        : "查看当前 UI 架构和维护说明。";
 
   return (
-    <div className={styles.settingsModalOverlay} style={isFullScreen ? { padding: 0, background: '#fff' } : {}}>
-      <div id="ai-assistant-settings-modal" className={`${styles.settingsModal} ${isFullScreen ? styles.settingsModalFullScreen : ""}`}>
-        <div className={styles.settingsModalHeader}>
-          <h3>AI Agent 管理</h3>
-          <div className={styles.actions}>
-            <button type="button" onClick={() => fileInputRef.current?.click()} style={{ background: '#e9edf8', color: '#31405e', border: 'none', fontWeight: 'bold' }}>
+    <div className={settings.overlay} onClick={onClose}>
+      <div
+        className={`${settings.modal} ${isFullScreen ? settings.modalFullScreen : ""}`}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <aside className={settings.settingsNav}>
+          <div className={settings.settingsTitle}>
+            <h3>设置</h3>
+            <p>AI Assistant 配置中心</p>
+          </div>
+          <nav className={settings.navList} aria-label="设置分类">
+            {[
+              ["agents", "模型", "◈"],
+              ["appearance", "外观", "◐"],
+              ["about", "关于", "i"],
+            ].map(([id, label, icon]) => (
+              <button
+                key={id}
+                type="button"
+                className={`${settings.navItem} ${activeSection === id ? settings.navItemActive : ""}`}
+                onClick={() => setActiveSection(id as SettingsSection)}
+              >
+                <span className={settings.navIcon}>{icon}</span>
+                <span>{label}</span>
+              </button>
+            ))}
+          </nav>
+          <div className={settings.navFooter}>
+            <button type="button" className={settings.button} onClick={() => fileInputRef.current?.click()}>
               导入 Agent
             </button>
-          </div>
-        </div>
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="application/json,.json"
-          className={styles.fileInput}
-          onChange={async (event) => {
-            const file = event.target.files?.[0];
-            if (!file) return;
-            try {
-              await onImportAgent(file);
-            } catch (error) {
-              const message = error instanceof Error ? error.message : "导入失败";
-              window.alert(message);
-            } finally {
-              event.target.value = "";
-            }
-          }}
-        />
-
-        <div className={`${styles.settingsModalContent} ${isWideScreen ? styles.settingsModalContentHorizontal : ""}`}>
-          <form key={editingAgent?.id || "new"} className={styles.agentForm} onSubmit={handleSave}>
-            <input
-              name="name"
-              placeholder="提供商名称 (如: 我的 OpenAI)"
-              value={formData.name || ""}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              required
-            />
-            <select
-              name="provider"
-              value={formData.provider || "openai"}
-              onChange={handleProviderChange}
-              required
-            >
-              <option value="openai">OpenAI</option>
-              <option value="zhipu">智谱清言 (Zhipu AI)</option>
-              <option value="anthropic">Anthropic (Claude)</option>
-              <option value="deepseek">DeepSeek</option>
-              <option value="custom">自定义 OpenAI 兼容接口</option>
-              <option value="custom_anthropic">自定义 Anthropic 兼容接口</option>
-            </select>
-            <input 
-              name="baseUrl" 
-              placeholder="Base URL (留空使用官方默认)" 
-              value={formData.baseUrl || ""} 
-              onChange={(e) => setFormData({ ...formData, baseUrl: e.target.value })}
-            />
-            <input 
-              name="apiKey" 
-              placeholder="API Key" 
-              type="password" 
-              value={formData.apiKey || ""} 
-              onChange={(e) => setFormData({ ...formData, apiKey: e.target.value })}
-            />
-            
-            <div style={{ marginTop: '8px', marginBottom: '4px', fontWeight: 'bold', fontSize: '13px', color: '#1e2942' }}>
-              子模型列表
-            </div>
-            {models.map((model, index) => (
-              <div key={model.id} style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                <input
-                  placeholder="显示名称 (如: GPT-4o)"
-                  value={model.name}
-                  onChange={(e) => updateModel(model.id, 'name', e.target.value)}
-                  required
-                  style={{ flex: 1, minWidth: '120px' }}
-                />
-                <input
-                  placeholder="模型 ID (如: gpt-4o)"
-                  value={model.modelId}
-                  onChange={(e) => updateModel(model.id, 'modelId', e.target.value)}
-                  required
-                  style={{ flex: 1, minWidth: '120px' }}
-                />
-                <input
-                  type="number"
-                  placeholder="Max Tokens (留空默认)"
-                  value={model.maxTokens || ""}
-                  onChange={(e) => updateModel(model.id, 'maxTokens', e.target.value ? parseInt(e.target.value, 10) : undefined as any)}
-                  min={2048}
-                  max={1000000}
-                  style={{ flex: 1, minWidth: '120px' }}
-                  title="上下文 Token 上限 (2048 - 1000000)"
-                />
-                {models.length > 1 && (
-                  <button type="button" onClick={() => removeModel(model.id)} style={{ padding: '0 8px', minHeight: '42px' }}>
-                    删
-                  </button>
-                )}
-              </div>
-            ))}
-            <button type="button" onClick={addModel} style={{ alignSelf: 'flex-start', padding: '0 12px', minHeight: '32px', fontSize: '13px' }}>
-              + 添加模型
+            <button type="button" className={settings.ghostButton} onClick={onClose}>
+              关闭
             </button>
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json,.json"
+            className={settings.fileInput}
+            onChange={(event) => void handleImport(event)}
+          />
+        </aside>
 
-            <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-              <button type="submit" style={{ flex: 1 }}>{editingAgent ? "保存修改" : "添加 Agent"}</button>
-              {editingAgent ? (
-                <button type="button" onClick={() => onEditAgent(null)} style={{ flex: 1 }}>
-                  取消编辑
-                </button>
-              ) : null}
+        <main className={settings.settingsMain}>
+          <header className={settings.settingsHeader}>
+            <div>
+              <h4>{sectionTitle}</h4>
+              <p>{sectionDescription}</p>
             </div>
-          </form>
+          </header>
 
-          <div className={styles.agentList}>
-            {agents.map((a) => (
-              <div key={a.id} className={styles.agentItem}>
-                <div className={styles.agentItemHeader}>
-                  <span>{a.name || (a as any).displayName} ({a.provider})</span>
-                  <div className={styles.actions}>
-                    <button onClick={() => onEditAgent(a)}>编辑</button>
-                    <button onClick={() => onExportAgent(a.id)}>导出</button>
-                    <button onClick={() => onDeleteAgent(a.id)}>删除</button>
+          <div className={settings.settingsContent}>
+            {activeSection === "agents" ? (
+              <div className={settings.sectionStack}>
+                <section className={settings.card}>
+                  <div className={settings.cardHeader}>
+                    <div>
+                      <h5>{editingAgent ? "编辑 Agent" : "添加 Agent"}</h5>
+                      <p>一个 Agent 可以包含多个模型，顶部模型选择栏会展开显示这些模型。</p>
+                    </div>
                   </div>
-                </div>
-                {a.models && a.models.length > 0 && (
-                  <div className={styles.agentModelsList}>
-                    {a.models.map(m => (
-                      <div key={m.id} className={styles.agentModelItem}>
-                        <span>{m.name}</span>
-                        <span style={{ color: '#71809b' }}>{m.modelId}{m.maxTokens ? ` (${m.maxTokens} tokens)` : ''}</span>
+                  <form className={settings.cardBody} onSubmit={handleSave}>
+                    <div className={settings.formGrid}>
+                      <label className={settings.field}>
+                        <span className={settings.label}>名称</span>
+                        <input
+                          className={settings.input}
+                          value={formData.name || ""}
+                          onChange={(event) => setFormData({ ...formData, name: event.target.value })}
+                          placeholder="例如：我的 OpenAI"
+                          required
+                        />
+                      </label>
+                      <label className={settings.field}>
+                        <span className={settings.label}>供应商</span>
+                        <select
+                          className={settings.select}
+                          value={formData.provider || "openai"}
+                          onChange={handleProviderChange}
+                        >
+                          <option value="openai">OpenAI</option>
+                          <option value="zhipu">智谱清言</option>
+                          <option value="anthropic">Anthropic</option>
+                          <option value="deepseek">DeepSeek</option>
+                          <option value="custom">自定义 OpenAI 兼容接口</option>
+                          <option value="custom_anthropic">自定义 Anthropic 兼容接口</option>
+                        </select>
+                      </label>
+                      <label className={`${settings.field} ${settings.fieldFull}`}>
+                        <span className={settings.label}>Base URL</span>
+                        <input
+                          className={settings.input}
+                          value={formData.baseUrl || ""}
+                          onChange={(event) => setFormData({ ...formData, baseUrl: event.target.value })}
+                          placeholder="留空使用供应商默认地址"
+                        />
+                      </label>
+                      <label className={`${settings.field} ${settings.fieldFull}`}>
+                        <span className={settings.label}>API Key</span>
+                        <input
+                          className={settings.input}
+                          type="password"
+                          value={formData.apiKey || ""}
+                          onChange={(event) => setFormData({ ...formData, apiKey: event.target.value })}
+                          placeholder="sk-..."
+                        />
+                      </label>
+                    </div>
+
+                    <div className={settings.cardHeader}>
+                      <div>
+                        <h5>模型列表</h5>
+                        <p>显示名称用于界面展示，模型 ID 会直接传给对应供应商。</p>
                       </div>
+                      <button type="button" className={settings.button} onClick={addModel}>
+                        添加模型
+                      </button>
+                    </div>
+                    <div className={settings.modelsTable}>
+                      {models.map((model) => (
+                        <div key={model.id} className={settings.modelRow}>
+                          <input
+                            className={settings.input}
+                            value={model.name}
+                            onChange={(event) => updateModel(model.id, "name", event.target.value)}
+                            placeholder="显示名称"
+                            required
+                          />
+                          <input
+                            className={settings.input}
+                            value={model.modelId}
+                            onChange={(event) => updateModel(model.id, "modelId", event.target.value)}
+                            placeholder="模型 ID"
+                            required
+                          />
+                          <input
+                            className={settings.input}
+                            type="number"
+                            min={2048}
+                            max={1000000}
+                            value={model.maxTokens || ""}
+                            onChange={(event) =>
+                              updateModel(
+                                model.id,
+                                "maxTokens",
+                                event.target.value ? Number(event.target.value) : undefined,
+                              )
+                            }
+                            placeholder="Max Tokens"
+                          />
+                          <button
+                            type="button"
+                            className={settings.dangerButton}
+                            onClick={() => removeModel(model.id)}
+                            disabled={models.length <= 1}
+                          >
+                            删除
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className={`${settings.toolbar} ${settings.formActions}`}>
+                      <div className={settings.hint}>配置只保存在本地插件存储中。</div>
+                      <div className={settings.actions}>
+                        {editingAgent ? (
+                          <button type="button" className={settings.button} onClick={() => onEditAgent(null)}>
+                            取消编辑
+                          </button>
+                        ) : null}
+                        <button type="submit" className={settings.primaryButton}>
+                          {editingAgent ? "保存修改" : "添加 Agent"}
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                </section>
+
+                <section className={settings.card}>
+                  <div className={settings.cardHeader}>
+                    <div>
+                      <h5>已配置 Agent</h5>
+                      <p>至少保留一个 Agent。删除当前模型后会自动切换到可用模型。</p>
+                    </div>
+                  </div>
+                  <div className={`${settings.cardBody} ${settings.agentList}`}>
+                    {agents.map((agent) => (
+                      <article key={agent.id} className={settings.agentItem}>
+                        <div className={settings.agentItemHeader}>
+                          <div>
+                            <div className={settings.agentName}>{agent.name || (agent as any).displayName}</div>
+                            <div className={settings.agentProvider}>{PROVIDER_LABELS[agent.provider] || agent.provider}</div>
+                          </div>
+                          <div className={settings.actions}>
+                            <button type="button" className={settings.button} onClick={() => onEditAgent(agent)}>
+                              编辑
+                            </button>
+                            <button type="button" className={settings.button} onClick={() => onExportAgent(agent.id)}>
+                              导出
+                            </button>
+                            <button type="button" className={settings.dangerButton} onClick={() => onDeleteAgent(agent.id)}>
+                              删除
+                            </button>
+                          </div>
+                        </div>
+                        <div className={settings.modelList}>
+                          {(agent.models || []).map((model) => (
+                            <div key={model.id} className={settings.modelItem}>
+                              <strong>{model.name}</strong>
+                              <span>{model.modelId}{model.maxTokens ? ` · ${model.maxTokens}` : ""}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </article>
                     ))}
                   </div>
-                )}
+                </section>
               </div>
-            ))}
-          </div>
-        </div>
+            ) : null}
 
-        <button className={styles.closeBtn} onClick={onClose} style={{ flexShrink: 0 }}>
-          关闭
-        </button>
+            {activeSection === "appearance" ? (
+              <section className={settings.card}>
+                <div className={settings.cardHeader}>
+                  <div>
+                    <h5>主题模式</h5>
+                    <p>使用 CSS variables 驱动，不再在组件里硬编码颜色。</p>
+                  </div>
+                </div>
+                <div className={settings.cardBody}>
+                  <div className={settings.themeChoices}>
+                    <button
+                      type="button"
+                      className={`${settings.themeChoice} ${themeMode === "dark" ? settings.themeChoiceActive : ""}`}
+                      onClick={() => onThemeModeChange("dark")}
+                    >
+                      <strong>深色</strong>
+                      <span>接近 Codex 工作台的低亮度界面。</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`${settings.themeChoice} ${themeMode === "light" ? settings.themeChoiceActive : ""}`}
+                      onClick={() => onThemeModeChange("light")}
+                    >
+                      <strong>浅色</strong>
+                      <span>适合明亮环境，保留同一套布局密度。</span>
+                    </button>
+                  </div>
+                </div>
+              </section>
+            ) : null}
+
+            {activeSection === "about" ? (
+              <section className={settings.card}>
+                <div className={settings.cardHeader}>
+                  <div>
+                    <h5>UI 架构</h5>
+                    <p>核心界面已经拆分为主题、Shell、Chat、Composer、ToolCalls、Settings 模块。</p>
+                  </div>
+                </div>
+                <div className={settings.cardBody}>
+                  <p className={settings.hint}>
+                    旧的全局样式仍用于少量附件预览和历史兼容组件；新的核心界面使用 CSS Modules + CSS variables，
+                    之后继续迭代时可以按模块替换旧样式，而不是继续堆进一个巨大的样式文件。
+                  </p>
+                </div>
+              </section>
+            ) : null}
+          </div>
+        </main>
       </div>
     </div>
   );

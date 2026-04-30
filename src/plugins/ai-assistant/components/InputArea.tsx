@@ -1,5 +1,5 @@
 import * as React from "react";
-import styles from "../styles.less";
+import composer from "../ui/Composer.module.less";
 import { parseLocalAttachment } from "../attachments";
 import { Attachment } from "../types";
 import { AttachmentPreviewModal } from "./AttachmentPreviewModal";
@@ -80,12 +80,12 @@ export const InputArea: React.FC<InputAreaProps> = ({
   };
 
   return (
-    <div className={`${styles.inputArea} ${isExpanded ? styles.inputAreaExpanded : ""}`}>
+    <div className={`${composer.inputArea} ${isExpanded ? composer.inputAreaExpanded : ""}`}>
       {attachments.length > 0 ? (
-        <div className={styles.attachments}>
+        <div className={composer.attachments}>
           {attachments.map((attachment) => (
-            <div key={attachment.id} className={styles.attachmentItem}>
-              <span className={styles.attachmentKind}>
+            <div key={attachment.id} className={composer.attachmentItem}>
+              <span className={composer.attachmentKind}>
                 {attachment.kind === "workspace-ucf-range"
                   ? "片段"
                   : attachment.kind === "workspace-ucf"
@@ -93,7 +93,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
                     : "文件"}
               </span>
               <button
-                className={styles.inlineTextButton}
+                className={composer.inlineTextButton}
                 onClick={() => {
                   if (attachment.kind === "workspace-ucf" || attachment.kind === "workspace-ucf-range") {
                     onOpenAttachment(attachment);
@@ -103,38 +103,69 @@ export const InputArea: React.FC<InputAreaProps> = ({
                 }}
                 title={getAttachmentDisplayName(attachment, vm)}
               >
-                <span className={styles.attachmentName}>{getAttachmentDisplayName(attachment, vm)}</span>
+                <span className={composer.attachmentName}>{getAttachmentDisplayName(attachment, vm)}</span>
               </button>
               {(attachment.kind === "workspace-ucf" || attachment.kind === "workspace-ucf-range") &&
               attachment.preview ? (
                 <button
-                  className={styles.attachmentExpandButton}
+                  className={composer.attachmentExpandButton}
                   onClick={() => setExpandedId((prev) => (prev === attachment.id ? null : attachment.id))}
                 >
                   {expandedId === attachment.id ? "收起" : "展开"}
                 </button>
               ) : null}
               <button
-                className={styles.attachmentRemoveButton}
+                className={composer.attachmentRemoveButton}
                 onClick={() => setAttachments((prev) => prev.filter((item) => item.id !== attachment.id))}
                 title="移除附件"
               >
                 x
               </button>
               {expandedId === attachment.id && attachment.preview ? (
-                <pre className={styles.attachmentPreviewBlock}>{attachment.preview}</pre>
+                <pre className={composer.attachmentPreviewBlock}>{attachment.preview}</pre>
               ) : null}
             </div>
           ))}
         </div>
       ) : null}
-      <div className={styles.inputBox}>
-        <div className={styles.inputTopRow}>
-          <div className={styles.inputToolsScroller}>
-            <div className={styles.inputTools}>
+      <div className={composer.inputBox}>
+        <div className={composer.composerTextareaWrap}>
+          <textarea
+            className={`${composer.composerTextarea} ${isExpanded ? composer.composerTextareaExpanded : ""}`}
+            placeholder="输入消息、修改需求或粘贴上下文..."
+            value={inputText}
+            onChange={(event) => setInputText(event.target.value)}
+            onKeyDown={(event) => {
+              if (isExpanded) {
+                if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+                  event.preventDefault();
+                  onSend();
+                }
+                return;
+              }
+
+              if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                onSend();
+              }
+            }}
+          />
+          <button
+            type="button"
+            className={composer.composerExpandButton}
+            onClick={onToggleExpanded}
+            title={isExpanded ? "退出全屏输入" : "展开输入框"}
+            aria-label={isExpanded ? "退出全屏输入" : "展开输入框"}
+          >
+            <ComposeExpandIcon aria-hidden="true" />
+          </button>
+        </div>
+        <div className={composer.inputBottomRow}>
+          <div className={composer.inputToolsScroller}>
+            <div className={composer.inputTools}>
               <button
                 type="button"
-                className={`${styles.toolButton} ${enableReasoning ? styles.toolButtonActive : ""}`}
+                className={`${composer.toolButton} ${enableReasoning ? composer.toolButtonActive : ""}`}
                 onClick={onToggleReasoning}
                 title="开启或关闭思考"
               >
@@ -142,7 +173,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
               </button>
               <button
                 type="button"
-                className={styles.toolButton}
+                className={composer.toolButton}
                 onClick={isSelectingBlocks ? onCancelBlockSelection : onStartBlockSelection}
                 title="选择积木片段"
               >
@@ -150,7 +181,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
               </button>
               <button
                 type="button"
-                className={styles.toolButton}
+                className={composer.toolButton}
                 onClick={() => fileInputRef.current?.click()}
                 title="导入本地附件"
               >
@@ -158,74 +189,18 @@ export const InputArea: React.FC<InputAreaProps> = ({
               </button>
             </div>
           </div>
-          <div className={styles.inputHint}>
-            <span>{isExpanded ? "Ctrl+Enter 发送，Enter 换行" : "Enter 发送，Shift + Enter 换行"}</span>
-            <span className={styles.inputHintChevron}>
-              <ChevronRightIcon />
-            </span>
-          </div>
-        </div>
-        <div className={styles.inputComposerRow}>
-          <div className={styles.composerTextareaWrap}>
-            <textarea
-              className={`${styles.composerTextarea} ${isExpanded ? styles.composerTextareaExpanded : ""}`}
-              placeholder="输入消息、修改需求或粘贴上下文..."
-              value={inputText}
-              onChange={(event) => setInputText(event.target.value)}
-              onKeyDown={(event) => {
-                if (isExpanded) {
-                  if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
-                    event.preventDefault();
-                    onSend();
-                  }
-                  return;
-                }
-
-                if (event.key === "Enter" && !event.shiftKey) {
-                  event.preventDefault();
-                  onSend();
-                }
-              }}
-            />
-            <button
-              type="button"
-              className={styles.composerExpandButton}
-              onClick={onToggleExpanded}
-              title={isExpanded ? "退出全屏输入" : "展开输入框"}
-              aria-label={isExpanded ? "退出全屏输入" : "展开输入框"}
-            >
-              <ComposeExpandIcon aria-hidden="true" />
-            </button>
-            {isExpanded ? (
-              isGenerating ? (
-                <button
-                  type="button"
-                  onClick={onStopGenerating}
-                  className={`${styles.primaryButton} ${styles.expandedComposerSendButton} ${styles.stopButton}`}
-                  title="停止生成"
-                  aria-label="停止生成"
-                >
-                  <StopIcon />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={onSend}
-                  className={`${styles.primaryButton} ${styles.expandedComposerSendButton}`}
-                  title="发送"
-                  aria-label="发送"
-                >
-                  <SendIcon />
-                </button>
-              )
-            ) : null}
-          </div>
-          {!isExpanded ? (
-            isGenerating ? (
+          <div className={composer.inputComposerActions}>
+            <div className={composer.inputHint}>
+              <span>{isExpanded ? "Ctrl+Enter 发送，Enter 换行" : "Enter 发送，Shift + Enter 换行"}</span>
+              <span className={composer.inputHintChevron}>
+                <ChevronRightIcon />
+              </span>
+            </div>
+            {isGenerating ? (
               <button
                 type="button"
                 onClick={onStopGenerating}
-                className={`${styles.primaryButton} ${styles.iconButton} ${styles.stopButton}`}
+                className={`${composer.primaryButton} ${isExpanded ? composer.expandedComposerSendButton : composer.iconButton} ${composer.stopButton}`}
                 title="停止生成"
                 aria-label="停止生成"
               >
@@ -235,14 +210,14 @@ export const InputArea: React.FC<InputAreaProps> = ({
               <button
                 type="button"
                 onClick={onSend}
-                className={`${styles.primaryButton} ${styles.iconButton}`}
+                className={`${composer.primaryButton} ${isExpanded ? composer.expandedComposerSendButton : composer.iconButton}`}
                 title="发送"
                 aria-label="发送"
               >
                 <SendIcon />
               </button>
-            )
-          ) : null}
+            )}
+          </div>
         </div>
       </div>
       <input
@@ -250,7 +225,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
         type="file"
         accept=".txt,.md,.markdown,.json,.js,.ts,.tsx,.jsx,.css,.less,.html,.xml,.yaml,.yml,.csv,.log,.ucf,.docx,.xls,.xlsx,.xlsm,.xlsb,.ods"
         multiple
-        className={styles.fileInput}
+        className={composer.fileInput}
         onChange={handleFileChange}
       />
       {previewAttachment ? (

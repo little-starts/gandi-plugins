@@ -1,7 +1,7 @@
 import * as React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import styles from "../styles.less";
+import chat from "../ui/Chat.module.less";
 import { Attachment, ChatMessage, ToolCall } from "../types";
 import { ToolCallViewer } from "./ToolCallViewer";
 import { MessageAttachments } from "./MessageAttachments";
@@ -39,6 +39,126 @@ interface ReasoningPanelState {
   collapsed: boolean;
   hasAutoCollapsed: boolean;
 }
+
+interface ChangeSummaryFile {
+  path: string;
+  added: number;
+  deleted: number;
+  operations: number;
+}
+
+interface ChangeSummary {
+  files: ChangeSummaryFile[];
+  added: number;
+  deleted: number;
+  operations: number;
+}
+
+const CODE_KEYWORDS = new Set([
+  "as",
+  "async",
+  "await",
+  "break",
+  "case",
+  "catch",
+  "class",
+  "const",
+  "continue",
+  "default",
+  "delete",
+  "do",
+  "else",
+  "export",
+  "extends",
+  "false",
+  "finally",
+  "for",
+  "from",
+  "function",
+  "if",
+  "import",
+  "in",
+  "instanceof",
+  "let",
+  "new",
+  "null",
+  "of",
+  "return",
+  "switch",
+  "this",
+  "throw",
+  "true",
+  "try",
+  "type",
+  "typeof",
+  "undefined",
+  "var",
+  "void",
+  "while",
+  "yield",
+]);
+
+const CODE_TOKEN_PATTERN =
+  /(\/\/.*|\/\*[\s\S]*?\*\/|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`|\b[A-Za-z_$][\w$]*(?=\s*\()|\b[A-Za-z_$][\w$]*\b|\b\d+(?:\.\d+)?\b|[{}[\]().,;:+\-*/%=<>!&|?]+)/g;
+
+const getCodeTokenClass = (token: string) => {
+  if (/^\/\//.test(token) || /^\/\*/.test(token)) return chat.syntaxComment;
+  if (/^["'`]/.test(token)) return chat.syntaxString;
+  if (/^\d/.test(token)) return chat.syntaxNumber;
+  if (CODE_KEYWORDS.has(token)) return chat.syntaxKeyword;
+  if (/^[A-Za-z_$][\w$]*$/.test(token) && !CODE_KEYWORDS.has(token)) return chat.syntaxIdentifier;
+  return chat.syntaxPunctuation;
+};
+
+const renderHighlightedCode = (code: string) => {
+  const nodes: React.ReactNode[] = [];
+  let cursor = 0;
+
+  code.replace(CODE_TOKEN_PATTERN, (token, _match, offset) => {
+    if (offset > cursor) {
+      nodes.push(code.slice(cursor, offset));
+    }
+
+    nodes.push(
+      <span key={`${offset}-${token}`} className={getCodeTokenClass(token)}>
+        {token}
+      </span>,
+    );
+    cursor = offset + token.length;
+    return token;
+  });
+
+  if (cursor < code.length) {
+    nodes.push(code.slice(cursor));
+  }
+
+  return nodes;
+};
+
+const MarkdownCode = ({ inline, className, children, ...props }: any) => {
+  const rawCode = String(children ?? "");
+  const code = rawCode.replace(/\n$/, "");
+  const language = /language-([\w-]+)/.exec(className || "")?.[1];
+  const isInline = inline ?? (!className && !rawCode.includes("\n"));
+
+  if (isInline) {
+    return (
+      <code className={chat.markdownInlineCode} {...props}>
+        {children}
+      </code>
+    );
+  }
+
+  return (
+    <code className={chat.markdownCode} data-language={language || undefined} {...props}>
+      {renderHighlightedCode(code)}
+    </code>
+  );
+};
+
+const markdownComponents = {
+  code: MarkdownCode,
+};
 
 const ReasoningChevron = ({ expanded }: { expanded: boolean }) => (
   <span
@@ -156,6 +276,118 @@ const collectAssistantBubbles = (messages: ChatMessage[], isGenerating: boolean)
   return items;
 };
 
+const safeParseJson = (value: string) => {
+  if (!value) return undefined;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return undefined;
+  }
+};
+
+const parsePatchStats = (patch: string) => {
+  const files: Array<{ path: string; added: number; deleted: number }> = [];
+  let current: { path: string; added: number; deleted: number } | null = null;
+
+  String(patch || "")
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .forEach((line) => {
+      if (line.startsWith("*** Update File:")) {
+        current = {
+          path: line.slice("*** Update File:".length).trim(),
+          added: 0,
+          deleted: 0,
+        };
+        files.push(current);
+        return;
+      }
+
+      if (!current || line === "*** Begin Patch" || line === "*** End Patch" || line.startsWith("@@")) {
+        return;
+      }
+
+      if (line.startsWith("+")) {
+        current.added += 1;
+        return;
+      }
+
+      if (line.startsWith("-")) {
+        current.deleted += 1;
+        return;
+      }
+
+      if (!line.startsWith(" ")) {
+        current.added += 1;
+      }
+    });
+
+  return files.filter((file) => file.path);
+};
+
+const collectLatestChangeSummary = (messages: ChatMessage[], isGenerating: boolean): ChangeSummary | null => {
+  if (isGenerating) return null;
+
+  const lastUserIndex = Math.max(
+    0,
+    messages.reduce((lastIndex, message, index) => (message.role === "user" ? index : lastIndex), -1),
+  );
+  const latestTurnMessages = messages.slice(lastUserIndex);
+  const toolResults = latestTurnMessages.filter((message) => message.role === "tool");
+  const byPath = new Map<string, ChangeSummaryFile>();
+
+  latestTurnMessages.forEach((message) => {
+    if (message.role !== "assistant" || !message.tool_calls?.length) {
+      return;
+    }
+
+    message.tool_calls.forEach((toolCall) => {
+      if (toolCall.function.name !== "applyPatch") {
+        return;
+      }
+
+      const resultMessage = toolResults.find((result) => result.tool_call_id === toolCall.id);
+      const result = safeParseJson(resultMessage?.content || "") as any;
+      if (!result || result.success === false) {
+        return;
+      }
+
+      const args = safeParseJson(toolCall.function.arguments) as any;
+      parsePatchStats(args?.patch || "").forEach((file) => {
+        const existing = byPath.get(file.path) || { path: file.path, added: 0, deleted: 0, operations: 0 };
+        existing.added += file.added;
+        existing.deleted += file.deleted;
+        byPath.set(file.path, existing);
+      });
+
+      (Array.isArray(result?.changedFiles) ? result.changedFiles : []).forEach((path: string) => {
+        if (!path) return;
+        byPath.set(path, byPath.get(path) || { path, added: 0, deleted: 0, operations: 0 });
+      });
+
+      (Array.isArray(result?.syncResults) ? result.syncResults : []).forEach((syncResult: any) => {
+        const path = syncResult?.path;
+        if (!path) return;
+        const existing = byPath.get(path) || { path, added: 0, deleted: 0, operations: 0 };
+        existing.operations += Number(syncResult?.operationCount || 0);
+        byPath.set(path, existing);
+      });
+    });
+  });
+
+  const files = [...byPath.values()];
+  if (!files.length) {
+    return null;
+  }
+
+  return {
+    files,
+    added: files.reduce((sum, file) => sum + file.added, 0),
+    deleted: files.reduce((sum, file) => sum + file.deleted, 0),
+    operations: files.reduce((sum, file) => sum + file.operations, 0),
+  };
+};
+
 const summarizeAssistantMessageForCopy = (item: AssistantBubble) =>
   item.segments
     .map((segment) => {
@@ -181,6 +413,10 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   hasSnapshot,
 }) => {
   const displayItems = React.useMemo(() => collectAssistantBubbles(messages, isGenerating), [messages, isGenerating]);
+  const latestChangeSummary = React.useMemo(
+    () => collectLatestChangeSummary(messages, isGenerating),
+    [messages, isGenerating],
+  );
   const scrollRef = React.useRef<HTMLDivElement | null>(null);
   const [isStickyToBottom, setIsStickyToBottom] = React.useState(true);
   const [reasoningPanels, setReasoningPanels] = React.useState<Record<string, ReasoningPanelState>>({});
@@ -259,117 +495,146 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   }, []);
 
   return (
-    <div className={styles.chatArea} ref={scrollRef} onScroll={handleScroll}>
-      {displayItems.length === 0 ? (
-        <div className={styles.emptyState}>
-          <span className={styles.emptyStateBadge}>AI Assistant</span>
-          <h4 className={styles.emptyStateTitle}>把问题、需求或代码片段直接发进来</h4>
-          <p className={styles.emptyStateText}>
-            可以让它解释积木逻辑、整理上下文、分析附件，或者直接帮助你修改当前工作区内容。
-          </p>
-        </div>
-      ) : (
-        displayItems.map((item, index) => {
-          if ("role" in item) {
+    <div className={chat.chatArea} ref={scrollRef} onScroll={handleScroll}>
+      <div className={chat.conversationRail}>
+        {displayItems.length === 0 ? (
+          <div className={chat.emptyState}>
+            <span className={chat.emptyStateBadge}>AI Assistant</span>
+            <h4 className={chat.emptyStateTitle}>把问题、需求或代码片段直接发进来</h4>
+            <p className={chat.emptyStateText}>
+              可以让它解释积木逻辑、整理上下文、分析附件，或者直接帮助你修改当前工作区内容。
+            </p>
+          </div>
+        ) : (
+          displayItems.map((item, index) => {
+            if ("role" in item) {
+              return (
+                <div key={item.id || index} className={`${chat.messageRow} ${chat.userMessage}`}>
+                  <div className={`${chat.messageActionRail} ${chat.messageActionRailHorizontal}`}>
+                    <button
+                      type="button"
+                      className={chat.messageActionButton}
+                      title="复制消息"
+                      aria-label="复制消息"
+                      onClick={() => void handleCopy(item.content)}
+                    >
+                      <CopyIcon aria-hidden="true" />
+                    </button>
+                    {hasSnapshot(item.id) ? (
+                      <button
+                        type="button"
+                        className={chat.messageActionButton}
+                        title="撤回到这里"
+                        aria-label="撤回到这里"
+                        onClick={() => onRestoreToUserMessage(item.id, item)}
+                      >
+                        <UndoIcon aria-hidden="true" />
+                      </button>
+                    ) : null}
+                  </div>
+                  <div className={chat.messageTurnBody}>
+                    <div className={`${chat.messageBubble} ${chat.messageBubbleUser}`}>
+                      <pre className={chat.messageText}>{item.content}</pre>
+                      {item.attachments?.length ? (
+                        <MessageAttachments
+                          attachments={item.attachments}
+                          onOpenAttachment={onOpenWorkspaceAttachment}
+                          vm={vm}
+                        />
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
             return (
-              <div key={item.id || index} className={`${styles.messageRow} ${styles.userMessage}`}>
-                <div className={`${styles.messageActionRail} ${styles.messageActionRailHorizontal}`}>
+              <div key={item.sourceMessage.id || index} className={`${chat.messageRow} ${chat.assistantMessage}`}>
+                <div className={chat.messageTurnBody}>
+                  <div className={`${chat.messageBubble} ${chat.messageBubbleAssistant}`}>
+                    <div className={chat.assistantSegments}>
+                      {item.segments.map((segment) =>
+                        segment.type === "text" ? (
+                          <div key={segment.id} className={chat.messageMarkdown}>
+                            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                              {segment.content}
+                            </ReactMarkdown>
+                          </div>
+                        ) : segment.type === "reasoning" ? (
+                          <div key={segment.id} className={chat.reasoningInline}>
+                            <button
+                              type="button"
+                              className={chat.reasoningInlineButton}
+                              onClick={() => toggleReasoning(segment.id)}
+                            >
+                              <span className={chat.reasoningInlineLabel}>
+                                {segment.isComplete
+                                  ? formatReasoningDuration(segment.startedAt, segment.endedAt)
+                                  : "思考中..."}
+                              </span>
+                              <span className={chat.reasoningInlineArrow}>
+                                <ReasoningChevron expanded={!reasoningPanels[segment.id]?.collapsed} />
+                              </span>
+                            </button>
+                            {!reasoningPanels[segment.id]?.collapsed ? (
+                              <div className={chat.reasoningInlineBody}>
+                                <pre className={chat.reasoningText}>{segment.content || "模型正在整理思路..."}</pre>
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : (
+                          <ToolCallViewer
+                            key={segment.id}
+                            toolCalls={segment.toolCalls}
+                            toolResults={segment.toolResults}
+                            isGenerating={isGenerating}
+                          />
+                        ),
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className={chat.messageActionRail}>
                   <button
                     type="button"
-                    className={styles.messageActionButton}
+                    className={chat.messageActionButton}
                     title="复制消息"
                     aria-label="复制消息"
-                    onClick={() => void handleCopy(item.content)}
+                    onClick={() => void handleCopy(summarizeAssistantMessageForCopy(item))}
                   >
                     <CopyIcon aria-hidden="true" />
                   </button>
-                  {hasSnapshot(item.id) ? (
-                    <button
-                      type="button"
-                      className={styles.messageActionButton}
-                      title="撤回到这里"
-                      aria-label="撤回到这里"
-                      onClick={() => onRestoreToUserMessage(item.id, item)}
-                    >
-                      <UndoIcon aria-hidden="true" />
-                    </button>
-                  ) : null}
-                </div>
-                <div className={styles.messageAvatar}>你</div>
-                <div className={`${styles.messageBubble} ${styles.messageBubbleUser}`}>
-                  <pre className={styles.messageText}>{item.content}</pre>
-                  {item.attachments?.length ? (
-                    <MessageAttachments
-                      attachments={item.attachments}
-                      onOpenAttachment={onOpenWorkspaceAttachment}
-                      vm={vm}
-                    />
-                  ) : null}
                 </div>
               </div>
             );
-          }
-
-          return (
-            <div key={item.sourceMessage.id || index} className={`${styles.messageRow} ${styles.assistantMessage}`}>
-              <div className={styles.messageAvatar}>AI</div>
-              <div className={`${styles.messageBubble} ${styles.messageBubbleAssistant}`}>
-                <div className={styles.assistantSegments}>
-                  {item.segments.map((segment) =>
-                    segment.type === "text" ? (
-                      <div key={segment.id} className={styles.messageMarkdown}>
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{segment.content}</ReactMarkdown>
-                      </div>
-                    ) : segment.type === "reasoning" ? (
-                      <div key={segment.id} className={styles.reasoningInline}>
-                        <button
-                          type="button"
-                          className={styles.reasoningInlineButton}
-                          onClick={() => toggleReasoning(segment.id)}
-                        >
-                          <span className={styles.reasoningInlineLabel}>
-                            {segment.isComplete
-                              ? formatReasoningDuration(segment.startedAt, segment.endedAt)
-                              : "思考中..."}
-                          </span>
-                          <span className={styles.reasoningInlineArrow}>
-                            <ReasoningChevron expanded={!reasoningPanels[segment.id]?.collapsed} />
-                          </span>
-                        </button>
-                        {!reasoningPanels[segment.id]?.collapsed ? (
-                          <div className={styles.reasoningInlineBody}>
-                            <pre className={styles.reasoningText}>{segment.content || "模型正在整理思路..."}</pre>
-                          </div>
-                        ) : null}
-                      </div>
-                    ) : (
-                      <ToolCallViewer
-                        key={segment.id}
-                        toolCalls={segment.toolCalls}
-                        toolResults={segment.toolResults}
-                        isGenerating={isGenerating}
-                      />
-                    ),
-                  )}
-                </div>
-              </div>
-              <div className={styles.messageActionRail}>
-                <button
-                  type="button"
-                  className={styles.messageActionButton}
-                  title="复制消息"
-                  aria-label="复制消息"
-                  onClick={() => void handleCopy(summarizeAssistantMessageForCopy(item))}
-                >
-                  <CopyIcon aria-hidden="true" />
-                </button>
-              </div>
+          })
+        )}
+        {latestChangeSummary ? (
+          <div className={chat.finalChangeSummary}>
+            <div className={chat.finalChangeSummaryHeader}>
+              <strong>{latestChangeSummary.files.length} 个文件已更改</strong>
+              <span>
+                <b className={chat.diffAdded}>+{latestChangeSummary.added}</b>{" "}
+                <b className={chat.diffDeleted}>-{latestChangeSummary.deleted}</b>
+              </span>
             </div>
-          );
-        })
-      )}
+            <div className={chat.finalChangeFileList}>
+              {latestChangeSummary.files.map((file) => (
+                <div key={file.path} className={chat.finalChangeFileItem}>
+                  <span>{file.path}</span>
+                  <span>
+                    <b className={chat.diffAdded}>+{file.added}</b>{" "}
+                    <b className={chat.diffDeleted}>-{file.deleted}</b>
+                    {file.operations ? <em>{file.operations} 个脚本操作</em> : null}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
       {!isStickyToBottom ? (
-        <button className={styles.scrollToBottomButton} onClick={() => scrollToBottom()} title="回到底部">
+        <button className={chat.scrollToBottomButton} onClick={() => scrollToBottom()} title="回到底部">
           ↓
         </button>
       ) : null}

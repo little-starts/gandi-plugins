@@ -1,5 +1,5 @@
 import * as React from "react";
-import styles from "../styles.less";
+import shell from "../ui/Shell.module.less";
 import { ChatSession } from "../types";
 
 interface HistoryPanelProps {
@@ -18,29 +18,49 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({
   onDeleteSession,
 }) => {
   return (
-    <div className={styles.leftPanel}>
-      <div className={styles.historyHeader}>
-        <div>
-          <span>聊天记录</span>
-          <div className={styles.historySubtitle}>最近的上下文和问题线程</div>
+    <div className={shell.sidebar}>
+      <div className={shell.sidebarHeader}>
+        <div className={shell.sidebarBrand}>
+          <span className={shell.sidebarBrandMark}>AI</span>
+          <div>
+            <span className={shell.sidebarBrandTitle}>Scratch Agent</span>
+            <div className={shell.sidebarBrandSubtitle}>项目会话</div>
+          </div>
         </div>
-        <button onClick={onNewChat} className={styles.newChatBtn} title="新对话">
-          +
-        </button>
       </div>
-      <div className={styles.historyList}>
-        {sessions.length === 0 ? <div className={styles.historyEmpty}>还没有会话，开始一个新的提问吧。</div> : null}
+      <button onClick={onNewChat} className={shell.sidebarNewChat} title="新对话">
+        <span className={shell.navIcon}>＋</span>
+        <span>新对话</span>
+      </button>
+      <div className={shell.sidebarSectionLabel}>最近</div>
+      <div className={shell.historyList}>
+        {sessions.length === 0 ? <div className={shell.historyEmpty}>还没有会话，开始一个新的提问吧。</div> : null}
         {sessions.map((s) => (
-          <div
+          <button
+            type="button"
             key={s.id}
-            className={`${styles.historyItem} ${currentSessionId === s.id ? styles.active : ""}`}
+            className={`${shell.historyItem} ${currentSessionId === s.id ? shell.historyItemActive : ""}`}
             onClick={() => onSelectSession(s.id)}
           >
-            <span className={styles.historyTitle}>{s.title}</span>
-            <button className={styles.deleteSessionBtn} onClick={(e) => onDeleteSession(s.id, e)} title="删除对话">
+            <span className={shell.historyItemMain}>
+              <span className={shell.navIcon}>⌁</span>
+              <span className={shell.historyTitle}>{s.title}</span>
+            </span>
+            <span
+              role="button"
+              tabIndex={0}
+              className={shell.deleteSessionButton}
+              onClick={(e) => onDeleteSession(s.id, e)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  onDeleteSession(s.id, e as unknown as React.MouseEvent);
+                }
+              }}
+              title="删除对话"
+            >
               ×
-            </button>
-          </div>
+            </span>
+          </button>
         ))}
       </div>
     </div>

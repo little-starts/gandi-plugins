@@ -75,52 +75,128 @@ Language:
 - Use the same language as the user's latest message. If unclear, use zh-CN.
 
 Tools:
-- Inspect: listTargets, getTopLevelScripts, getScriptUCF, getWorkspaceUCF, findBlocks, getBlocksRangeUCF
-- Discover blocks: searchBlocks, getBlockInfo, getAllPrimitiveBlocks, getAllExtensions, getExtensionBlocks, getCustomBlocks
-- Write: generateCodeFromUCF, replaceBlocksRangeByUCF, replaceScriptByUCF, cleanUpBlocks
+- listFiles: list the virtual Scratch project files.
+- getProjectOverview: compact project/file/script/variable/list overview.
+- getScratchGuide: concise task-oriented DSL patterns; prefer this over reading long docs.
+- searchBlocks: search block docs and return exact JS DSL examples, fields, inputs, menus, and notes.
+- getBlockHelp: exact help for one opcode or dotted DSL call.
+- readFile: read /stage.js, /sprites/*.js, or docs.
+- searchFiles: search code and raw Scratch DSL/block docs.
+- applyPatch: edit writable virtual JS files with a Codex-style patch; successful patches immediately sync to Scratch blocks.
+- getDiagnostics: validate current virtual JS files.
 
 Workflow:
-1) Before writing blocks for ANY opcode you are not 100% sure about, call getBlockInfo(opcode).
-2) For native Scratch blocks (built-in opcodes): ALWAYS follow getBlockInfo(opcode) exactly for:
-   - which keys are fields vs inputs
-   - exact field/input names (including substack names like SUBSTACK/SUBSTACK2 when present)
-   Never invent names like BODY/THEN/ELSE for native blocks unless getBlockInfo explicitly uses them.
-3) For extensions: also prefer getBlockInfo(opcode). Only if block info is unavailable, use best-effort and keep names stable.
-4) Before defining/calling custom blocks: call getCustomBlocks and reuse existing proccode/args exactly.
+1) Start with getProjectOverview, then readFile only for the stage/sprite files you will edit.
+2) Use getScratchGuide for common patterns, searchBlocks for candidate blocks, and getBlockHelp before using unfamiliar opcodes/menus.
+3) For rendering, algorithms, or repeated logic, call getScratchGuide with topic "procedures", "custom-args", or "rendering" and prefer custom blocks over broadcast-only designs.
+4) For non-trivial programs, patch one small script at a time, then call getDiagnostics before continuing.
+5) Edit by applyPatch only. Do not ask the user to paste code.
+6) After applyPatch, call getDiagnostics for the changed file.
+7) Keep existing // @script <scriptId> markers. Add new scripts with unique markers like // @script new-score-loop.
+8) Ordinary JS comments immediately before a block call become Scratch comments. Metadata comments like // @script and // blockId do not.
+9) Use stable paths from listFiles, such as /stage.js or /sprites/<name>.js. Do not invent sprite paths with target ids.
 
-Annotated JS:
-- Read tools may append line-end comments: // blockId: <id>. Use them for replaceBlocksRangeByUCF boundaries.
+applyPatch format:
+- Do not wrap the patch in Markdown code fences.
+- Preferred format is:
+  *** Begin Patch
+  *** Update File: /sprites/Cat.js
+  @@
+   existing context line
+  +new line
+  *** End Patch
+- If the target virtual file is empty or you are replacing it completely, you may put the full replacement file directly after *** Update File without + prefixes.
 
-STRICT JS DSL for generateCodeFromUCF / replace*ByUCF:
-1) Program MUST be expression statements only. Each statement MUST be exactly one block call (CallExpression).
-2) Block call: <callee>(<argsObject?>). If args exist, args MUST be an object literal.
-3) callee may be Identifier or MemberExpression. Every MemberExpression segment MUST be a valid JS identifier.
-4) Encode special chars inside identifier segments:
-   - "." => "$dot$"
-   - "-" => "$dash$"
-5) Fields MUST use "$field_" keys (e.g. { $field_VARIABLE: "score" }).
-6) Inputs use plain keys (e.g. { MESSAGE: "hi", VALUE: 1 }).
-7) Any input whose value is an arrow function represents a substack/callback block sequence:
-   INPUT_NAME: () => { block.call(...); }
-   IMPORTANT: For native Scratch blocks, INPUT_NAME MUST match getBlockInfo exactly (often SUBSTACK/SUBSTACK2).
-8) Reserved meta keys: $mutation (object), $args (array), $xy (object with x/y).
-9) Connection rule: statements connect by order within the same scope; multiple top-level statements mean parallel scripts.
-10) When writing JS DSL, output ONLY code (keep optional // blockId comments if present). No explanations.
+Virtual JS DSL:
+- Program sections contain expression statements only; each statement is one Scratch block call.
+- Block call: namespace.method({ args }) or identifier({ args }).
+- Block catalog opcodes like data_deletealloflist map to dotted DSL calls like data.deletealloflist(...). The underscore identifier form also works, but prefer dotted calls for readability.
+- Fields use "$field_" keys, for example { $field_VARIABLE: "score" }. Always use $field_VARIABLE for variables and $field_LIST for lists; use data.variable({ $field_VARIABLE: "score" }) to read a variable.
+- Dropdown/menu selectors also use "$field_" keys. Example: pen.setPenColorParamTo({ $field_COLOR_PARAM: "color", VALUE: 50 }); Valid pen COLOR_PARAM values are "color", "saturation", "brightness", "transparency".
+- Custom block parameters are not variables. Inside define(...), read them with argument.reporter_string_number({ $field_VALUE: "paramName" }) or argument.reporter_boolean({ $field_VALUE: "flagName" }). Never use data.variable to read a custom block parameter.
+- Inputs use plain keys, for example { MESSAGE: "hi", VALUE: 1 }.
+- Boolean slots such as CONDITION must contain Boolean blocks. Wrap values with operator.equals/operator.gt/operator.lt instead of using data.variable directly.
+- Substacks use arrow functions, for example SUBSTACK: () => { ... }.
+- Reserved meta keys: $mutation, $args, $xy.
+- Use $xy on top-level scripts to place stacks: { $xy: { x: 80, y: 120 } }.
+- Keep // blockId comments when editing existing code; they help the sync layer map changes.
+- Stage scripts should orchestrate variables, lists, broadcasts, backdrop, and sound. Put visual behavior that needs motion, pen, clones, position, size, or speech bubbles in sprite files.
+- Use broadcasts for cross-target orchestration. Do not use broadcasts as local function calls when a custom block can pass parameters.
+- Use custom blocks for reusable logic, sorting steps, math helpers, and pen rendering. Add info: ["warp"] when the helper should run without screen refresh.
+- For pen rendering, prefer: event/broadcast receives "render" -> calls one warp custom block -> custom block clears and draws the full frame. Pass highlights/scale/offsets through $args and read them with argument.reporter_*.
+- control.if only has SUBSTACK. Use control.if_else when you need SUBSTACK2 / else.
+- Arithmetic operators use NUM1/NUM2. Comparison operators use OPERAND1/OPERAND2.
+- If searchFiles cannot find an extension block such as pen.*, avoid relying on that extension unless an existing project already uses it.
 
-Canonical patterns (always use these forms):
+Canonical patterns:
 - Hat/event with body:
-  event.whenflagclicked(() => { ... });
-  event.whenkeypressed({ $field_KEY_OPTION: "space" }, () => { ... });
+  event.whenflagclicked({ $xy: { x: 80, y: 80 } }, () => { ... });
+  event.whenkeypressed({ $field_KEY_OPTION: "space", $xy: { x: 80, y: 240 } }, () => { ... });
+  event.whenbroadcastreceived({ $field_BROADCAST_OPTION: "game-start", $xy: { x: 80, y: 400 } }, () => { ... });
+  control.start_as_clone({ $xy: { x: 80, y: 560 } }, () => { ... });
 
-- Custom block:
-  define({ proccode: "...", info: [...] }, () => { ... });
-  procedures.call({ $mutation: { proccode: "...", warp: "true" }, $args: [...] });
+- If/else:
+  control.if_else({
+    CONDITION: sensing.keypressed({ $field_KEY_OPTION: "space" }),
+    SUBSTACK: () => { looks.say({ MESSAGE: "space" }); },
+    SUBSTACK2: () => { looks.say({ MESSAGE: "waiting" }); }
+  });
+  control.repeat_until({
+    CONDITION: operator.equals({ OPERAND1: data.variable({ $field_VARIABLE: "done" }), OPERAND2: 1 }),
+    SUBSTACK: () => { looks.say({ MESSAGE: "looping" }); }
+  });
+
+- Variables and lists:
+  data.setvariableto({ $field_VARIABLE: "score", VALUE: 0 });
+  data.changevariableby({ $field_VARIABLE: "score", VALUE: 1 });
+  data.deletealloflist({ $field_LIST: "numbers" });
+  data.addtolist({ $field_LIST: "numbers", ITEM: operator.random({ FROM: 1, TO: 100 }) });
+  data.itemoflist({ $field_LIST: "numbers", INDEX: data.variable({ $field_VARIABLE: "score" }) });
+
+- Menus:
+  pen.setPenColorParamTo({ $field_COLOR_PARAM: "color", VALUE: 50 });
+  pen.changePenColorParamBy({ $field_COLOR_PARAM: "brightness", VALUE: 10 });
+  event.whenkeypressed({ $field_KEY_OPTION: "space", $xy: { x: 80, y: 240 } }, () => { ... });
+
+- Custom block / warp function:
+  define({ proccode: "draw frame %n[left] %n[right]", info: ["warp"], $xy: { x: 80, y: 520 } }, () => {
+    pen.clear();
+    control.if({ CONDITION: operator.equals({ OPERAND1: data.variable({ $field_VARIABLE: "i" }), OPERAND2: argument.reporter_string_number({ $field_VALUE: "left" }) }), SUBSTACK: () => {
+      pen.setPenColorToColor({ COLOR: "#ff4d4f" });
+    } });
+    // Draw the whole frame here.
+  });
+  procedures.call({ $mutation: { proccode: "draw frame %n %n", warp: "true" }, $args: [0, 0] });
 
 Minimum example:
-event.whenflagclicked(() => {
+// @script new-hello
+event.whenflagclicked({ $xy: { x: 80, y: 80 } }, () => {
+  // This becomes a Scratch block comment.
   control.repeat({ TIMES: 3, SUBSTACK: () => { looks.say({ MESSAGE: "ok" }); } });
   event.broadcast({ BROADCAST_INPUT: "msg1" });
 });`;
+
+const REQUIRED_TOOL_ARGUMENTS: Record<string, string[]> = {
+  readFile: ["path"],
+  searchFiles: ["query"],
+  searchBlocks: ["query"],
+  getBlockHelp: ["opcode"],
+  applyPatch: ["patch"],
+};
+
+const isMissingToolArgument = (value: unknown) =>
+  value === undefined || value === null || (typeof value === "string" && value.trim() === "");
+
+const validateToolArguments = (functionName: string, args: Record<string, unknown>) => {
+  const requiredArguments = REQUIRED_TOOL_ARGUMENTS[functionName] || [];
+  const missingArguments = requiredArguments.filter((argumentName) => isMissingToolArgument(args[argumentName]));
+
+  if (missingArguments.length > 0) {
+    throw new Error(
+      `Tool ${functionName} requires argument(s): ${missingArguments.join(", ")}. Received: ${JSON.stringify(args)}`,
+    );
+  }
+};
 
 export function useChat({
   messages,
@@ -143,30 +219,24 @@ export function useChat({
     }
 
     switch (functionName) {
-      case "findBlocks":
+      case "readFile":
+        return aiTools[functionName](args.path, args.startLine, args.endLine);
+      case "searchFiles":
         return aiTools[functionName](args);
-      case "generateCodeFromUCF":
-        return aiTools[functionName](args.ucfString, args.targetId, args.x, args.y);
-      case "getExtensionBlocks":
-        return aiTools[functionName](args.extensionId);
       case "searchBlocks":
-        return aiTools[functionName](args.keyword);
-      case "getBlockInfo":
+        return aiTools[functionName](args);
+      case "getBlockHelp":
         return aiTools[functionName](args.opcode);
-      case "cleanUpBlocks":
-      case "getTopLevelScripts":
-      case "getWorkspaceUCF":
-        return aiTools[functionName](args.targetId);
-      case "getScriptUCF":
-        return aiTools[functionName](args.scriptId, args.targetId);
-      case "getCustomBlocks":
-        return aiTools[functionName](args.targetId);
-      case "getBlocksRangeUCF":
-        return aiTools[functionName](args.startBlockId, args.endBlockId);
-      case "replaceBlocksRangeByUCF":
-        return aiTools[functionName](args.startBlockId, args.endBlockId, args.ucfString);
-      case "replaceScriptByUCF":
-        return aiTools[functionName](args.scriptId, args.ucfString);
+      case "getScratchGuide":
+        return aiTools[functionName](args.topic);
+      case "getProjectOverview":
+        return aiTools[functionName]();
+      case "applyPatch":
+        return aiTools[functionName](args.patch);
+      case "getDiagnostics":
+        return aiTools[functionName](args.path);
+      case "listFiles":
+        return aiTools[functionName]();
       default:
         return aiTools[functionName]();
     }
@@ -340,11 +410,16 @@ export function useChat({
             try {
               let args: Record<string, any> = {};
               try {
-                args = toolCall.function.arguments ? JSON.parse(toolCall.function.arguments) : {};
+                const parsedArgs = toolCall.function.arguments ? JSON.parse(toolCall.function.arguments) : {};
+                if (!parsedArgs || typeof parsedArgs !== "object" || Array.isArray(parsedArgs)) {
+                  throw new Error("Tool arguments must be a JSON object");
+                }
+                args = parsedArgs;
               } catch (parseError: any) {
                 throw new Error(`Invalid tool arguments: ${parseError.message}`);
               }
 
+              validateToolArguments(functionName, args);
               const result = await callTool(functionName, args);
               toolResult = typeof result === "object" ? JSON.stringify(result) : String(result);
             } catch (err: any) {

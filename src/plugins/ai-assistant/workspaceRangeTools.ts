@@ -150,6 +150,14 @@ const blockStateToXml = (blockId: string, blocksMap: Map<string, any>) => {
     xml += mutationToXml(block.mutation);
   }
 
+  if (typeof block.commentText === "string" && block.commentText.trim()) {
+    const width = Number(block.commentWidth) || 200;
+    const height = Number(block.commentHeight) || 160;
+    xml += `<comment pinned="false" h="${escapeXml(height)}" w="${escapeXml(width)}">${escapeXml(
+      block.commentText,
+    )}</comment>`;
+  }
+
   Object.values(block.inputs || {}).forEach((input: any) => {
     if (!input?.block && !input?.shadow) return;
     xml += `<value name="${escapeXml(input.name)}">`;
@@ -189,34 +197,187 @@ const blockStatesToXml = (blocksState: any[]) => {
     .join("")}</xml>`;
 };
 
+const getTargetVariables = (target: any) => Object.values(target?.variables || {}) as any[];
+
+const repairListVariableValue = (target: any, variable: any) => {
+  if (!target || !variable || variable.type !== "list" || Array.isArray(variable.value)) {
+    return null;
+  }
+
+  const repairedValue =
+    variable.value === undefined || variable.value === null || variable.value === "" ? [] : [variable.value];
+  const previousValue = variable.value;
+  variable.value = repairedValue;
+  if ("_value" in variable) {
+    variable._value = repairedValue;
+  }
+  if ("_monitorUpToDate" in variable) {
+    variable._monitorUpToDate = false;
+  }
+
+  return {
+    targetId: target.id,
+    variableId: variable.id,
+    name: variable.name,
+    previousValue,
+    repairedValue,
+  };
+};
+
+export const repairListVariableValues = (vm: PluginContext["vm"], targetId?: string) => {
+  const targets = targetId
+    ? [vm.runtime?.getTargetById?.(targetId)].filter(Boolean)
+    : Array.isArray(vm.runtime?.targets)
+      ? vm.runtime.targets
+      : [];
+  const repairs: any[] = [];
+
+  targets.forEach((target: any) => {
+    getTargetVariables(target).forEach((variable) => {
+      const repair = repairListVariableValue(target, variable);
+      if (repair) {
+        repairs.push(repair);
+      }
+    });
+  });
+
+  return repairs;
+};
+
 const resolveVariableReferences = (vm: PluginContext["vm"], workspace: Blockly.WorkspaceSvg, blocksState: any[]) => {
-  const existingVariables = workspace.getAllVariables().map((item: any) => ({
-    id: item.id_ || item.id,
-    name: item.name,
-    type: item.type || "",
-  }));
+  const createScratchFieldId = () =>
+    window.Blockly?.Utils?.genUid?.() || `ai-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  const target = vm.editingTarget;
+  const runtimeTargets = Array.isArray(vm.runtime?.targets) ? vm.runtime.targets : [];
+  const stageTarget = runtimeTargets.find((item: any) => item?.isStage) || target;
+  repairListVariableValues(vm, target?.id);
+
+  const existingVariables = [
+    ...runtimeTargets.flatMap((runtimeTarget: any) =>
+      getTargetVariables(runtimeTarget).map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        type: item.type || "",
+        source: "runtime",
+        target: runtimeTarget,
+        variable: item,
+      })),
+    ),
+    ...workspace.getAllVariables().map((item: any) => ({
+      id: item.id_ || item.id,
+      name: item.name,
+      type: item.type || "",
+      source: "workspace",
+      target: null,
+      variable: item,
+    })),
+  ];
+
+  const createStableVariableId = (name: string, type: string) => {
+    const base = String(name || "").trim() || createScratchFieldId();
+    const conflictingVariable = existingVariables.find((item) => item.id === base && (item.name !== name || item.type !== type));
+    if (!conflictingVariable) return base;
+
+    const suffix = type === "list" ? "list" : type === "broadcast_msg" ? "broadcast" : "var";
+    let index = 2;
+    let nextId = `${base}-${suffix}`;
+    while (existingVariables.some((item) => item.id === nextId && (item.name !== name || item.type !== type))) {
+      nextId = `${base}-${suffix}-${index}`;
+      index += 1;
+    }
+    return nextId;
+  };
+
+  const ensureWorkspaceVariable = (id: string, name: string, type: string) => {
+    if (!workspace) return;
+    try {
+      const existingById =
+        typeof (workspace as any).getVariableById === "function" ? (workspace as any).getVariableById(id) : null;
+      if (existingById) return;
+
+      const existingByName =
+        typeof (workspace as any).getVariable === "function" ? (workspace as any).getVariable(name, type) : null;
+      if (existingByName) return;
+
+      if (typeof (workspace as any).createVariable === "function") {
+        (workspace as any).createVariable(name, type, id);
+      }
+    } catch (error) {
+      console.warn("[AI Assistant] Failed to ensure workspace variable", { id, name, type, error });
+    }
+  };
+
+  const ensureRuntimeVariable = (id: string, name: string, type: string) => {
+    let variableRecord = existingVariables.find((item) => item.id === id && item.type === type);
+    if (!variableRecord) {
+      variableRecord = existingVariables.find((item) => item.name === name && item.type === type);
+    }
+    if (variableRecord?.source === "runtime") {
+      if (type === "list") {
+        repairListVariableValue(variableRecord.target, variableRecord.variable);
+      }
+      ensureWorkspaceVariable(variableRecord.id, variableRecord.name, type);
+      return variableRecord;
+    }
+
+    const ownerTarget = type === "broadcast_msg" ? stageTarget : stageTarget || target;
+    let variable = getTargetVariables(ownerTarget).find((item) => item.id === id || (item.name === name && item.type === type));
+    if (!variable) {
+      ownerTarget?.createVariable(id, name, type, false);
+      variable = ownerTarget?.variables?.[id] || getTargetVariables(ownerTarget).find((item) => item.id === id);
+    }
+    if (type === "list") {
+      repairListVariableValue(ownerTarget, variable);
+    }
+    ensureWorkspaceVariable(id, name, type);
+    existingVariables.push({
+      id,
+      name,
+      type,
+      source: "runtime",
+      target: ownerTarget,
+      variable,
+    });
+    return existingVariables[existingVariables.length - 1];
+  };
+
+  const findVariableReference = (nameOrId: string, type: string) => {
+    const byName = existingVariables.find((item) => item.name === nameOrId && item.type === type);
+    if (byName) return byName;
+
+    const byId = existingVariables.find((item) => item.id === nameOrId && item.type === type);
+    if (byId) return byId;
+
+    return null;
+  };
+
+  const normalizeVariableField = (field: any) => {
+    const variableType = field.name === "VARIABLE" ? "" : "list";
+    const requestedName = String(field.value || "").trim();
+    if (!requestedName) {
+      return;
+    }
+
+    const existingVariable = findVariableReference(requestedName, variableType);
+    if (existingVariable) {
+      field.id = existingVariable.id;
+      field.value = existingVariable.name;
+      field.variableType = variableType;
+      ensureRuntimeVariable(existingVariable.id, existingVariable.name, variableType);
+      return;
+    }
+
+    const fieldId = createStableVariableId(requestedName, variableType);
+    field.id = fieldId;
+    field.value = requestedName;
+    field.variableType = variableType;
+    ensureRuntimeVariable(fieldId, requestedName, variableType);
+  };
 
   blocksState.forEach((blockState) => {
     Object.values(blockState.fields || {}).forEach((field: any) => {
       if (field.name !== "VARIABLE" && field.name !== "LIST" && field.name !== "LIST_MENU") return;
-
-      const variableType = field.name === "VARIABLE" ? "" : "list";
-      const existingVariable = existingVariables.find(
-        (item) => item.name === field.value && item.type === variableType,
-      );
-      if (existingVariable) {
-        field.id = existingVariable.id;
-        field.variableType = variableType;
-        return;
-      }
-
-      vm.editingTarget?.createVariable(field.id, field.value, variableType, false);
-      existingVariables.push({
-        id: field.id,
-        name: field.value,
-        type: variableType,
-      });
-      field.variableType = variableType;
+      normalizeVariableField(field);
     });
   });
 };
@@ -233,6 +394,20 @@ const buildFailureResult = (error: string, stage: string, diagnostics: Record<st
   stage,
   diagnostics,
 });
+
+const applyBlockCommentsToWorkspace = (workspace: Blockly.WorkspaceSvg, blocksState: any[]) => {
+  blocksState.forEach((blockState) => {
+    if (typeof blockState.commentText !== "string" || !blockState.commentText.trim()) return;
+    const block = workspace.getBlockById(blockState.id) as any;
+    if (!block) return;
+
+    if (typeof block.setCommentText === "function") {
+      block.setCommentText(blockState.commentText);
+    } else if (block.comment && typeof block.comment.setText === "function") {
+      block.comment.setText(blockState.commentText);
+    }
+  });
+};
 
 export const getBlocksRangeUCF = (
   vm: PluginContext["vm"],
@@ -267,6 +442,7 @@ export const replaceBlocksRangeByUCF = async (
   startBlockId: string,
   endBlockId: string,
   ucfString: string,
+  options: { includeComments?: boolean; linkTopLevelStatements?: boolean } = {},
 ) => {
   const target = resolveTargetForRange(vm, startBlockId, endBlockId);
   console.log("[AI Assistant Range Replace] resolved runtime target", {
@@ -282,13 +458,17 @@ export const replaceBlocksRangeByUCF = async (
     });
   }
 
+  let switchedTarget = false;
   if (vm.editingTarget?.id !== target.id) {
     console.log("[AI Assistant Range Replace] switching editing target", { from: vm.editingTarget?.id, to: target.id });
     vm.setEditingTarget(target.id);
     await new Promise((resolve) => window.setTimeout(resolve, 60));
+    switchedTarget = true;
   }
 
-  const workspace = _workspace || (window.Blockly.getMainWorkspace() as Blockly.WorkspaceSvg);
+  const workspace = switchedTarget
+    ? (window.Blockly.getMainWorkspace() as Blockly.WorkspaceSvg)
+    : _workspace || (window.Blockly.getMainWorkspace() as Blockly.WorkspaceSvg);
   const topLevelBefore = collectTopLevelBlockIds(workspace);
 
   const startBlock = workspace.getBlockById(startBlockId) as Blockly.BlockSvg | null;
@@ -323,7 +503,11 @@ export const replaceBlocksRangeByUCF = async (
   }
 
   try {
-    const newBlocksState = ucfToScratch(normalizeModelUCF(ucfString), { runtime: vm.runtime });
+    const newBlocksState = ucfToScratch(normalizeModelUCF(ucfString), {
+      runtime: vm.runtime,
+      includeComments: options.includeComments === true,
+      linkTopLevelStatements: options.linkTopLevelStatements === true,
+    });
     if (!newBlocksState.length) {
       return buildFailureResult("Replacement UCF produced no blocks", "parse_replacement", {
         startBlockId,
@@ -376,6 +560,8 @@ export const replaceBlocksRangeByUCF = async (
 
     const xmlDom = window.Blockly.Xml.textToDom(xmlText);
     window.Blockly.Xml.domToWorkspace(xmlDom, workspace);
+    applyBlockCommentsToWorkspace(workspace, newBlocksState);
+    repairListVariableValues(vm, target.id);
 
     let insertedBlock = workspace.getBlockById(topLevelBlockState.id) as Blockly.BlockSvg | null;
     if (!insertedBlock) {
@@ -497,6 +683,7 @@ export const replaceScriptByUCF = async (
   workspace: Blockly.WorkspaceSvg,
   scriptId: string,
   ucfString: string,
+  options: { includeComments?: boolean } = {},
 ) => {
   const target = vm.runtime.targets.find((item) => item.blocks?._blocks?.[scriptId]) || null;
   if (!target) {
@@ -511,7 +698,9 @@ export const replaceScriptByUCF = async (
     });
   }
 
-  const result = await replaceBlocksRangeByUCF(vm, workspace, boundary.startBlockId, boundary.endBlockId, ucfString);
+  const result = await replaceBlocksRangeByUCF(vm, workspace, boundary.startBlockId, boundary.endBlockId, ucfString, {
+    includeComments: options.includeComments === true,
+  });
   return {
     ...result,
     diagnostics: {
@@ -523,4 +712,167 @@ export const replaceScriptByUCF = async (
       ...(result.diagnostics || {}),
     },
   };
+};
+
+export const insertScriptByUCF = async (
+  vm: PluginContext["vm"],
+  _workspace: Blockly.WorkspaceSvg,
+  targetId: string,
+  ucfString: string,
+  options: { includeComments?: boolean } = {},
+) => {
+  const target = targetId ? vm.runtime.getTargetById(targetId) : vm.editingTarget;
+  if (!target) {
+    return buildFailureResult("Target not found", "resolve_target", { targetId });
+  }
+
+  let switchedTarget = false;
+  if (vm.editingTarget?.id !== target.id) {
+    vm.setEditingTarget(target.id);
+    await new Promise((resolve) => window.setTimeout(resolve, 60));
+    switchedTarget = true;
+  }
+
+  const workspace = switchedTarget
+    ? (window.Blockly.getMainWorkspace() as Blockly.WorkspaceSvg)
+    : _workspace || (window.Blockly.getMainWorkspace() as Blockly.WorkspaceSvg);
+  const topLevelBefore = collectTopLevelBlockIds(workspace);
+  let parsedBlockDiagnostics: Record<string, unknown> = {};
+
+  try {
+    const newBlocksState = ucfToScratch(normalizeModelUCF(ucfString), {
+      runtime: vm.runtime,
+      includeComments: options.includeComments === true,
+    });
+    parsedBlockDiagnostics = {
+      parsedBlockCount: newBlocksState.length,
+      parsedTopLevelBlocks: newBlocksState.filter((blockState) => blockState.topLevel).map((blockState) => ({
+        id: blockState.id,
+        opcode: blockState.opcode,
+      })),
+      parsedOpcodes: [...new Set(newBlocksState.map((blockState) => blockState.opcode))].slice(0, 40),
+    };
+    if (!newBlocksState.length) {
+      return buildFailureResult("Inserted UCF produced no blocks", "parse_insert", { targetId: target.id });
+    }
+
+    const topLevelBlocks = newBlocksState.filter((blockState) => blockState.topLevel);
+    if (topLevelBlocks.length !== 1) {
+      return buildFailureResult("Inserted UCF must contain exactly one top-level stack", "validate_insert_topology", {
+        targetId: target.id,
+        topLevelBlockCount: topLevelBlocks.length,
+      });
+    }
+
+    resolveVariableReferences(vm, workspace, newBlocksState);
+    const xmlText = blockStatesToXml(newBlocksState);
+
+    window.Blockly.Events.setGroup(true);
+    const xmlDom = window.Blockly.Xml.textToDom(xmlText);
+    window.Blockly.Xml.domToWorkspace(xmlDom, workspace);
+    applyBlockCommentsToWorkspace(workspace, newBlocksState);
+    repairListVariableValues(vm, target.id);
+
+    let insertedBlock = workspace.getBlockById(topLevelBlocks[0].id) as Blockly.BlockSvg | null;
+    if (!insertedBlock) {
+      await new Promise((resolve) => window.setTimeout(resolve, 60));
+      insertedBlock = workspace.getBlockById(topLevelBlocks[0].id) as Blockly.BlockSvg | null;
+    }
+    if (!insertedBlock) {
+      return buildFailureResult("Inserted top-level block not found in workspace", "locate_inserted_block", {
+        targetId: target.id,
+        insertedTopBlockId: topLevelBlocks[0].id,
+      });
+    }
+
+    const topLevelAfter = collectTopLevelBlockIds(workspace);
+    const newTopLevelBlockIds = topLevelAfter.filter((blockId) => !topLevelBefore.includes(blockId));
+
+    if (!newTopLevelBlockIds.includes(insertedBlock.id)) {
+      insertedBlock.dispose(false, true);
+      return buildFailureResult("Inserted script did not create a visible top-level workspace block", "validate_insert", {
+        targetId: target.id,
+        insertedTopBlockId: insertedBlock.id,
+        topLevelBefore,
+        topLevelAfter,
+      });
+    }
+
+    return {
+      success: true,
+      insertedTopBlockId: insertedBlock.id,
+      targetId: target.id,
+      blockCount: newBlocksState.length,
+      diagnostics: {
+        topLevelBefore,
+        topLevelAfter,
+        newTopLevelBlockIds,
+      },
+    };
+  } catch (error) {
+    return buildFailureResult(error instanceof Error ? error.message : "Failed to insert script", "exception", {
+      targetId: target.id,
+      ...parsedBlockDiagnostics,
+    });
+  } finally {
+    window.Blockly.Events.setGroup(false);
+  }
+};
+
+export const deleteScriptById = async (
+  vm: PluginContext["vm"],
+  _workspace: Blockly.WorkspaceSvg,
+  scriptId: string,
+) => {
+  const target = vm.runtime.targets.find((item) => item.blocks?._blocks?.[scriptId]) || null;
+  if (!target) {
+    return buildFailureResult("Script not found in runtime targets", "resolve_script_target", { scriptId });
+  }
+
+  const boundary = getScriptBoundaryIds(target, scriptId);
+  if (!boundary.success) {
+    return buildFailureResult(boundary.error, "resolve_script_boundaries", {
+      scriptId,
+      targetId: target.id,
+    });
+  }
+
+  let switchedTarget = false;
+  if (vm.editingTarget?.id !== target.id) {
+    vm.setEditingTarget(target.id);
+    await new Promise((resolve) => window.setTimeout(resolve, 60));
+    switchedTarget = true;
+  }
+
+  const workspace = switchedTarget
+    ? (window.Blockly.getMainWorkspace() as Blockly.WorkspaceSvg)
+    : _workspace || (window.Blockly.getMainWorkspace() as Blockly.WorkspaceSvg);
+  const topBlock = workspace.getBlockById(scriptId) as Blockly.BlockSvg | null;
+  if (!topBlock) {
+    return buildFailureResult("Script not found in current workspace", "resolve_workspace_script", {
+      scriptId,
+      targetId: target.id,
+    });
+  }
+
+  try {
+    window.Blockly.Events.setGroup(true);
+    setTimeout(() => {
+      workspace.fireDeletionListeners(topBlock);
+    });
+    topBlock.dispose(false, true);
+    return {
+      success: true,
+      deletedScriptId: scriptId,
+      targetId: target.id,
+      blockCount: boundary.blockCount,
+    };
+  } catch (error) {
+    return buildFailureResult(error instanceof Error ? error.message : "Failed to delete script", "exception", {
+      scriptId,
+      targetId: target.id,
+    });
+  } finally {
+    window.Blockly.Events.setGroup(false);
+  }
 };

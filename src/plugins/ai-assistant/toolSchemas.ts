@@ -2,8 +2,8 @@ export const scratchToolSchemas = [
   {
     type: "function",
     function: {
-      name: "listTargets",
-      description: "List all stage and sprite targets in the current project.",
+      name: "listFiles",
+      description: "List virtual Scratch project files, including writable stage/sprite JS files and read-only docs.",
       parameters: {
         type: "object",
         properties: {},
@@ -13,77 +13,9 @@ export const scratchToolSchemas = [
   {
     type: "function",
     function: {
-      name: "getTopLevelScripts",
-      description: "Get a structured list of top-level scripts for a target.",
-      parameters: {
-        type: "object",
-        properties: {
-          targetId: {
-            type: "string",
-            description: "The ID of the target. If omitted, uses the current editing target.",
-          },
-        },
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "getScriptUCF",
-      description: "Get the Scratch JS Code for a specific top-level script by scriptId.",
-      parameters: {
-        type: "object",
-        properties: {
-          scriptId: {
-            type: "string",
-            description: "The top-level script ID.",
-          },
-          targetId: {
-            type: "string",
-            description: "The ID of the target. If omitted, uses the current editing target.",
-          },
-        },
-        required: ["scriptId"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "findBlocks",
-      description: "Find blocks by opcode, keyword, target, or top-level script scope.",
-      parameters: {
-        type: "object",
-        properties: {
-          targetId: {
-            type: "string",
-            description: "Limit search to a specific target.",
-          },
-          opcode: {
-            type: "string",
-            description: "Match a specific opcode exactly.",
-          },
-          keyword: {
-            type: "string",
-            description: "Match keyword text against opcode info and field values.",
-          },
-          scriptId: {
-            type: "string",
-            description: "Limit search to a specific top-level script.",
-          },
-          limit: {
-            type: "number",
-            description: "Maximum number of results to return. Defaults to 50.",
-          },
-        },
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "getAllPrimitiveBlocks",
-      description: "Get a list of all native/primitive Scratch opcodes and their text representations.",
+      name: "getProjectOverview",
+      description:
+        "Get a compact overview of Scratch targets, virtual file paths, scripts, variables, and lists. Prefer this before reading full files when orienting.",
       parameters: {
         type: "object",
         properties: {},
@@ -93,28 +25,18 @@ export const scratchToolSchemas = [
   {
     type: "function",
     function: {
-      name: "getAllExtensions",
-      description: "Get all loaded Scratch extensions in the current environment.",
-      parameters: {
-        type: "object",
-        properties: {},
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "getExtensionBlocks",
-      description: "Get all blocks available in a specific Scratch extension.",
+      name: "getScratchGuide",
+      description:
+        "Get a concise task-oriented Scratch JS DSL guide. Use this instead of reading long docs for common patterns.",
       parameters: {
         type: "object",
         properties: {
-          extensionId: {
+          topic: {
             type: "string",
-            description: "The ID of the extension.",
+            description:
+              "Optional topic: quickstart, events, data, control, procedures, custom-args, rendering, menus, pen, patching, debugging. Defaults to quickstart.",
           },
         },
-        required: ["extensionId"],
       },
     },
   },
@@ -122,30 +44,40 @@ export const scratchToolSchemas = [
     type: "function",
     function: {
       name: "searchBlocks",
-      description: "Search for Scratch blocks by keyword.",
+      description:
+        "Search Scratch blocks by opcode, Chinese/English keyword, or DSL term and return compact JS DSL examples, fields, inputs, menus, and notes.",
       parameters: {
         type: "object",
         properties: {
-          keyword: {
+          query: {
             type: "string",
-            description: "The keyword to search for.",
+            description: "Keyword or opcode, such as pen color, broadcast, start_as_clone, data_replaceitemoflist.",
+          },
+          maxResults: {
+            type: "number",
+            description: "Maximum number of matches. Defaults to 12.",
+          },
+          includeExamples: {
+            type: "boolean",
+            description: "Whether to include JS DSL examples. Defaults to true.",
           },
         },
-        required: ["keyword"],
+        required: ["query"],
       },
     },
   },
   {
     type: "function",
     function: {
-      name: "getBlockInfo",
-      description: "Get detailed information about a specific Scratch block by its opcode.",
+      name: "getBlockHelp",
+      description:
+        "Get exact help for one Scratch opcode, dotted DSL call, or common alias (for example operator.less / pen.down), including JS syntax, fields, inputs, menus, substacks, and a ready-to-copy example.",
       parameters: {
         type: "object",
         properties: {
           opcode: {
             type: "string",
-            description: "The opcode of the block.",
+            description: "Opcode or dotted DSL call, for example control_start_as_clone or pen.setPenColorParamTo.",
           },
         },
         required: ["opcode"],
@@ -155,145 +87,84 @@ export const scratchToolSchemas = [
   {
     type: "function",
     function: {
-      name: "cleanUpBlocks",
-      description: "Clean up and auto-arrange the blocks in the workspace.",
+      name: "readFile",
+      description: "Read a virtual Scratch file. Supports optional 1-based line ranges.",
       parameters: {
         type: "object",
         properties: {
-          targetId: {
+          path: {
             type: "string",
-            description: "The ID of the target. If omitted, uses the current editing target.",
+            description: "Virtual path such as /stage.js, /sprites/Cat.<targetId>.js, or /docs/scratch-agent.md.",
+          },
+          startLine: {
+            type: "number",
+            description: "Optional 1-based start line.",
+          },
+          endLine: {
+            type: "number",
+            description: "Optional 1-based end line.",
           },
         },
+        required: ["path"],
       },
     },
   },
   {
     type: "function",
     function: {
-      name: "getWorkspaceUCF",
-      description: "Get the current blocks of the workspace in Scratch JS format.",
+      name: "searchFiles",
+      description: "Search virtual Scratch JS files and read-only docs by keyword.",
       parameters: {
         type: "object",
         properties: {
-          targetId: {
+          query: {
             type: "string",
-            description: "The ID of the target. If omitted, uses the current editing target.",
+            description: "Keyword or opcode to search for.",
+          },
+          path: {
+            type: "string",
+            description: "Optional virtual path to restrict the search.",
+          },
+          maxResults: {
+            type: "number",
+            description: "Maximum number of matches. Defaults to 50.",
           },
         },
+        required: ["query"],
       },
     },
   },
   {
     type: "function",
     function: {
-      name: "getCustomBlocks",
-      description: "Get all currently available custom block definitions in the target.",
-      parameters: {
-        type: "object",
-        properties: {
-          targetId: {
-            type: "string",
-            description: "The ID of the target. If omitted, uses the current editing target.",
-          },
-        },
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "getBlocksRangeUCF",
-      description: "Get the Scratch JS Code of a continuous selected block range by its start and end block IDs.",
-      parameters: {
-        type: "object",
-        properties: {
-          startBlockId: {
-            type: "string",
-            description: "The first block ID in the continuous range.",
-          },
-          endBlockId: {
-            type: "string",
-            description: "The last block ID in the continuous range.",
-          },
-        },
-        required: ["startBlockId", "endBlockId"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "replaceBlocksRangeByUCF",
+      name: "applyPatch",
       description:
-        "Replace a continuous existing block range with new Scratch JS blocks while reconnecting the surrounding chain.",
+        "Apply a Codex-style patch to writable virtual Scratch JS files. Supports standard +/- hunks and full replacement content after Update File. Successful patches immediately sync changed scripts back to Scratch blocks.",
       parameters: {
         type: "object",
         properties: {
-          startBlockId: {
+          patch: {
             type: "string",
-            description: "The first block ID in the range to replace.",
-          },
-          endBlockId: {
-            type: "string",
-            description: "The last block ID in the range to replace.",
-          },
-          ucfString: {
-            type: "string",
-            description: "The replacement Scratch JS code for the selected range.",
+            description: "Patch text beginning with *** Begin Patch and containing one or more *** Update File hunks.",
           },
         },
-        required: ["startBlockId", "endBlockId", "ucfString"],
+        required: ["patch"],
       },
     },
   },
   {
     type: "function",
     function: {
-      name: "replaceScriptByUCF",
-      description: "Replace an entire top-level script by scriptId with new Scratch JS code.",
+      name: "getDiagnostics",
+      description: "Validate current virtual Scratch JS files and report parser/block diagnostics.",
       parameters: {
         type: "object",
         properties: {
-          scriptId: {
+          path: {
             type: "string",
-            description: "The top-level script ID to replace.",
-          },
-          ucfString: {
-            type: "string",
-            description: "The replacement Scratch JS code for the whole script.",
+            description: "Optional virtual path. If omitted, validates all virtual Scratch JS files.",
           },
         },
-        required: ["scriptId", "ucfString"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "generateCodeFromUCF",
-      description: "Generate and insert Scratch blocks from Scratch JS code into the workspace.",
-      parameters: {
-        type: "object",
-        properties: {
-          ucfString: {
-            type: "string",
-            description: "The Scratch JS code representing the blocks.",
-          },
-          targetId: {
-            type: "string",
-            description: "The ID of the target. If omitted, uses the current editing target.",
-          },
-          x: {
-            type: "number",
-            description: "X coordinate offset.",
-          },
-          y: {
-            type: "number",
-            description: "Y coordinate offset.",
-          },
-        },
-        required: ["ucfString"],
       },
     },
   },

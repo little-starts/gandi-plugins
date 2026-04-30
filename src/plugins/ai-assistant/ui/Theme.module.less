@@ -1,0 +1,111 @@
+.themeRoot {
+  --ai-font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --ai-font-mono: Consolas, Monaco, "SFMono-Regular", monospace;
+  --ai-radius-xs: 6px;
+  --ai-radius-sm: 8px;
+  --ai-radius-md: 10px;
+  --ai-radius-lg: 14px;
+  --ai-radius-xl: 18px;
+  --ai-radius-pill: 999px;
+  --ai-shadow-menu: 0 18px 46px var(--ai-shadow-strong);
+  --ai-shadow-floating: 0 18px 50px var(--ai-shadow-medium);
+  --ai-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ai-transition-fast: 140ms var(--ai-ease);
+  --ai-transition: 200ms var(--ai-ease);
+  --ai-chat-rail-width: 680px;
+  --ai-chat-user-width: 520px;
+  --ai-composer-width: 720px;
+  --ai-syntax-keyword: #ff7b72;
+  --ai-syntax-string: #a5d6ff;
+  --ai-syntax-number: #79c0ff;
+  --ai-syntax-comment: #8b949e;
+  --ai-syntax-identifier: #d2a8ff;
+  --ai-syntax-punctuation: #c9d1d9;
+
+  color: var(--ai-text-primary);
+  color-scheme: var(--ai-color-scheme);
+  font-family: var(--ai-font-sans);
+}
+
+.themeRoot,
+.themeRoot *,
+.themeRoot *::before,
+.themeRoot *::after {
+  box-sizing: border-box;
+}
+
+.themeDark {
+  --ai-color-scheme: dark;
+  --ai-bg-app: #171717;
+  --ai-bg-sidebar: #151c25;
+  --ai-bg-surface: #202020;
+  --ai-bg-surface-hover: #282828;
+  --ai-bg-surface-active: #303030;
+  --ai-bg-elevated: #242424;
+  --ai-bg-input: #242424;
+  --ai-bg-code: #0d1117;
+  --ai-bg-danger: rgba(127, 29, 29, 0.18);
+  --ai-bg-success: rgba(45, 212, 191, 0.12);
+  --ai-bg-warning: rgba(251, 191, 36, 0.14);
+  --ai-border-subtle: #2f2f2f;
+  --ai-border: #343434;
+  --ai-border-strong: #464646;
+  --ai-text-primary: #f5f5f5;
+  --ai-text-secondary: #d4d4d4;
+  --ai-text-muted: #a3a3a3;
+  --ai-text-faint: #858585;
+  --ai-accent: #8ab4ff;
+  --ai-accent-strong: #4f7cff;
+  --ai-accent-bg: rgba(95, 111, 255, 0.14);
+  --ai-success: #99f6e4;
+  --ai-success-strong: #3fb950;
+  --ai-warning: #fcd34d;
+  --ai-danger: #fca5a5;
+  --ai-danger-strong: #ff7b72;
+  --ai-send-bg: #ffffff;
+  --ai-send-fg: #111111;
+  --ai-shadow-medium: rgba(0, 0, 0, 0.36);
+  --ai-shadow-strong: rgba(0, 0, 0, 0.48);
+  --ai-overlay: rgba(0, 0, 0, 0.54);
+}
+
+.themeLight {
+  --ai-color-scheme: light;
+  --ai-bg-app: #f7f8fb;
+  --ai-bg-sidebar: #eef2f7;
+  --ai-bg-surface: #ffffff;
+  --ai-bg-surface-hover: #f1f4f9;
+  --ai-bg-surface-active: #e8eef8;
+  --ai-bg-elevated: #ffffff;
+  --ai-bg-input: #ffffff;
+  --ai-bg-code: #f5f7fb;
+  --ai-bg-danger: #fff1f2;
+  --ai-bg-success: #ecfdf5;
+  --ai-bg-warning: #fffbeb;
+  --ai-border-subtle: #dfe4ec;
+  --ai-border: #cfd7e3;
+  --ai-border-strong: #b9c3d3;
+  --ai-text-primary: #172033;
+  --ai-text-secondary: #334155;
+  --ai-text-muted: #64748b;
+  --ai-text-faint: #8994a7;
+  --ai-accent: #315eea;
+  --ai-accent-strong: #2448c8;
+  --ai-accent-bg: rgba(49, 94, 234, 0.1);
+  --ai-success: #047857;
+  --ai-success-strong: #15803d;
+  --ai-warning: #a16207;
+  --ai-danger: #be123c;
+  --ai-danger-strong: #dc2626;
+  --ai-send-bg: #111827;
+  --ai-send-fg: #ffffff;
+  --ai-shadow-medium: rgba(15, 23, 42, 0.12);
+  --ai-shadow-strong: rgba(15, 23, 42, 0.2);
+  --ai-overlay: rgba(15, 23, 42, 0.38);
+  --ai-syntax-keyword: #cf222e;
+  --ai-syntax-string: #0a6099;
+  --ai-syntax-number: #0550ae;
+  --ai-syntax-comment: #6e7781;
+  --ai-syntax-identifier: #8250df;
+  --ai-syntax-punctuation: #24292f;
+}

@@ -64,6 +64,61 @@ const cloneToolCalls = (toolCalls: ToolCall[]) =>
     },
   }));
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === "object" && !Array.isArray(value);
+
+const isEmptyRecord = (value: Record<string, unknown>) => Object.keys(value).length === 0;
+
+const parseJsonObject = (value: unknown): Record<string, unknown> | null => {
+  if (isRecord(value)) return value;
+  if (typeof value !== "string" || !value.trim()) return null;
+
+  try {
+    const parsed = JSON.parse(value);
+    return isRecord(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
+const stringifyToolArguments = (value: unknown): string => {
+  if (typeof value === "string") return value;
+  if (value === undefined || value === null) return "";
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+};
+
+const getOpenAIToolCallDeltaIndex = (
+  toolCallDelta: Record<string, any>,
+  toolCalls: Array<{ id: string; type: "function"; function: { name: string; arguments: string } }>,
+) => {
+  if (typeof toolCallDelta.index === "number") return toolCallDelta.index;
+
+  if (toolCallDelta.id) {
+    const existingIndex = toolCalls.findIndex((toolCall) => toolCall.id === toolCallDelta.id);
+    if (existingIndex >= 0) return existingIndex;
+  }
+
+  if (toolCalls.length === 0 || toolCallDelta.id) return toolCalls.length;
+  return toolCalls.length - 1;
+};
+
+const getToolCallInputFallback = (
+  toolCalls: ToolCall[] | undefined,
+  blockId: string | undefined,
+  fallbackIndex: number,
+) => {
+  if (!Array.isArray(toolCalls)) return null;
+
+  const matchingToolCall = blockId ? toolCalls.find((toolCall) => toolCall.id === blockId) : undefined;
+  const fallbackToolCall = matchingToolCall || toolCalls[fallbackIndex];
+  return parseJsonObject(fallbackToolCall?.function?.arguments);
+};
+
 const OPENAI_COMPATIBLE_PROVIDERS = new Set<Agent["provider"]>(["openai", "zhipu", "deepseek", "custom"]);
 
 class OpenAICompatibleAdapter implements ProviderAdapter {
@@ -189,14 +244,15 @@ class OpenAICompatibleAdapter implements ProviderAdapter {
         if (Array.isArray(delta.tool_calls)) {
           let toolCallsChanged = false;
           for (const toolCallDelta of delta.tool_calls) {
-            const index = toolCallDelta.index ?? toolCalls.length;
+            const index = getOpenAIToolCallDeltaIndex(toolCallDelta, toolCalls);
+            const argumentDelta = stringifyToolArguments(toolCallDelta.function?.arguments);
             if (!toolCalls[index]) {
               toolCalls[index] = {
                 id: toolCallDelta.id || "",
                 type: "function",
                 function: {
                   name: toolCallDelta.function?.name || "",
-                  arguments: toolCallDelta.function?.arguments || "",
+                  arguments: argumentDelta,
                 },
               };
               toolCallsChanged = true;
@@ -211,8 +267,8 @@ class OpenAICompatibleAdapter implements ProviderAdapter {
               toolCalls[index].function.name += toolCallDelta.function.name;
               toolCallsChanged = true;
             }
-            if (toolCallDelta.function?.arguments) {
-              toolCalls[index].function.arguments += toolCallDelta.function.arguments;
+            if (argumentDelta) {
+              toolCalls[index].function.arguments += argumentDelta;
               toolCallsChanged = true;
             }
           }
@@ -272,6 +328,7 @@ class AnthropicAdapter implements ProviderAdapter {
     for (const message of conversationMessages as Array<Record<string, any>>) {
       if (message.role === "assistant") {
         if (Array.isArray(message.anthropic_content_blocks) && message.anthropic_content_blocks.length > 0) {
+          let toolUseIndex = 0;
           for (const block of message.anthropic_content_blocks as AnthropicContentBlock[]) {
             if (block?.type === "thinking" && block.thinking) {
               pushAnthropicMessage("assistant", {
@@ -286,11 +343,15 @@ class AnthropicAdapter implements ProviderAdapter {
               continue;
             }
             if (block?.type === "tool_use") {
+              const blockInput = isRecord(block.input) ? block.input : {};
+              const fallbackInput = getToolCallInputFallback(message.tool_calls, block.id, toolUseIndex);
+              toolUseIndex += 1;
+
               pushAnthropicMessage("assistant", {
                 type: "tool_use",
                 id: block.id || "",
                 name: block.name || "",
-                input: block.input || {},
+                input: isEmptyRecord(blockInput) && fallbackInput ? fallbackInput : blockInput,
               });
             }
           }
@@ -405,6 +466,7 @@ class AnthropicAdapter implements ProviderAdapter {
     const toolCalls: Array<{ id: string; type: "function"; function: { name: string; arguments: string } }> = [];
     const anthropicContentBlocks: AnthropicContentBlock[] = [];
     const toolCallIndexByContentIndex = new Map<number, number>();
+    const toolInputJsonByContentIndex = new Map<number, string>();
     let reading = true;
     let finished = false;
 
@@ -527,38 +589,52 @@ class AnthropicAdapter implements ProviderAdapter {
         }
 
         if (parsed.type === "content_block_start" && parsed.content_block?.type === "tool_use") {
-          const toolCall = {
+          const blockIndex =
+            typeof parsed.index === "number" ? parsed.index : anthropicContentBlocks.length;
+          const initialInput = parseJsonObject(parsed.content_block.input) || {};
+          const toolCall: { id: string; type: "function"; function: { name: string; arguments: string } } = {
             id: parsed.content_block.id || "",
             type: "function",
             function: {
               name: parsed.content_block.name || "",
-              arguments: "",
+              arguments: isEmptyRecord(initialInput) ? "" : JSON.stringify(initialInput),
             },
-          } as const;
+          };
           toolCalls.push(toolCall);
           const toolCallIndex = toolCalls.length - 1;
-          const blockIndex =
-            typeof parsed.index === "number" ? parsed.index : anthropicContentBlocks.length;
           toolCallIndexByContentIndex.set(blockIndex, toolCallIndex);
           anthropicContentBlocks[blockIndex] = {
             type: "tool_use",
             id: toolCall.id,
             name: toolCall.function.name,
-            input:
-              parsed.content_block.input && typeof parsed.content_block.input === "object"
-                ? parsed.content_block.input
-                : {},
+            input: initialInput,
           };
           onToolCallsDelta?.(cloneToolCalls(toolCalls.filter((toolCall) => toolCall.id || toolCall.function.name)));
         }
 
-        if (parsed.type === "content_block_delta" && parsed.delta?.type === "input_json_delta") {
+        if (
+          parsed.type === "content_block_delta" &&
+          (parsed.delta?.type === "input_json_delta" || typeof parsed.delta?.partial_json === "string")
+        ) {
           const blockIndex = typeof parsed.index === "number" ? parsed.index : -1;
           const toolCallIndex =
             (blockIndex >= 0 ? toolCallIndexByContentIndex.get(blockIndex) : undefined) ?? toolCalls.length - 1;
           const currentToolCall = toolCalls[toolCallIndex];
           if (currentToolCall) {
-            currentToolCall.function.arguments += parsed.delta.partial_json || "";
+            const partialJson = parsed.delta.partial_json || "";
+            if (blockIndex >= 0) {
+              const nextInputJson = `${toolInputJsonByContentIndex.get(blockIndex) || ""}${partialJson}`;
+              toolInputJsonByContentIndex.set(blockIndex, nextInputJson);
+              currentToolCall.function.arguments = nextInputJson;
+
+              const parsedInput = parseJsonObject(nextInputJson);
+              const currentBlock = anthropicContentBlocks[blockIndex];
+              if (parsedInput && currentBlock?.type === "tool_use") {
+                currentBlock.input = parsedInput;
+              }
+            } else {
+              currentToolCall.function.arguments += partialJson;
+            }
             onToolCallsDelta?.(cloneToolCalls(toolCalls.filter((toolCall) => toolCall.id || toolCall.function.name)));
           }
         }
@@ -567,6 +643,17 @@ class AnthropicAdapter implements ProviderAdapter {
 
     if (!finished && !signal?.aborted) {
       throw new Error("Stream ended unexpectedly. The API provider might be overloaded or the connection was dropped.");
+    }
+
+    for (const [blockIndex, toolCallIndex] of toolCallIndexByContentIndex) {
+      const currentBlock = anthropicContentBlocks[blockIndex];
+      const currentToolCall = toolCalls[toolCallIndex];
+      if (currentBlock?.type !== "tool_use" || !currentToolCall) continue;
+
+      const parsedInput = parseJsonObject(currentToolCall.function.arguments);
+      if (parsedInput) {
+        currentBlock.input = parsedInput;
+      }
     }
 
     return {

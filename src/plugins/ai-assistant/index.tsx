@@ -1,6 +1,8 @@
 import * as React from "react";
 import ReactDOM from "react-dom";
 import styles from "./styles.less";
+import themeStyles from "./ui/Theme.module.less";
+import shell from "./ui/Shell.module.less";
 import Tooltip from "components/Tooltip";
 import ExpansionBox, { ExpansionRect } from "components/ExpansionBox";
 import { useStoredState } from "./hooks/useStoredState";
@@ -20,6 +22,7 @@ import { useChat } from "./hooks/useChat";
 import { Attachment } from "./types";
 import { getAttachmentDisplayName } from "./attachmentUtils";
 import { callGetBlockInfo, setRuntime } from "./converter";
+import { exportConversationText } from "./conversationExport";
 
 const DEFAULT_CONTAINER_INFO = {
   width: 800,
@@ -28,10 +31,17 @@ const DEFAULT_CONTAINER_INFO = {
   translateY: 50,
 };
 
+type ThemeMode = "dark" | "light";
+const THEME_STORAGE_KEY = "AI_ASSISTANT_THEME_MODE";
+
 const AIAssistant: React.FC<PluginContext> = ({ vm, workspace }) => {
   const [visible, setVisible] = React.useState(false);
   const [isAgentMenuOpen, setIsAgentMenuOpen] = React.useState(false);
   const [isComposerExpanded, setIsComposerExpanded] = React.useState(false);
+  const [themeMode, setThemeMode] = React.useState<ThemeMode>(() => {
+    const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
+    return stored === "light" ? "light" : "dark";
+  });
   const containerRef = React.useRef(null);
   const agentMenuRef = React.useRef<HTMLDivElement | null>(null);
   const [enableReasoning, setEnableReasoning] = useStoredState<boolean>("AI_ASSISTANT_ENABLE_REASONING", false);
@@ -43,6 +53,10 @@ const AIAssistant: React.FC<PluginContext> = ({ vm, workspace }) => {
 
   const containerInfoRef = React.useRef(containerInfo);
   const useDrawerHistory = containerInfo.width < 760;
+
+  React.useEffect(() => {
+    window.localStorage.setItem(THEME_STORAGE_KEY, themeMode);
+  }, [themeMode]);
 
   React.useEffect(() => {
     containerInfoRef.current = containerInfo;
@@ -68,6 +82,7 @@ const AIAssistant: React.FC<PluginContext> = ({ vm, workspace }) => {
   const {
     sessions,
     currentSessionId,
+    currentSession,
     messages,
     isLeftPanelOpen,
     setIsLeftPanelOpen,
@@ -146,6 +161,37 @@ const AIAssistant: React.FC<PluginContext> = ({ vm, workspace }) => {
     },
     [rollbackToMessage, setAttachments, setInputText, vm],
   );
+
+  const handleExportConversation = React.useCallback(async () => {
+    if (messages.length === 0) {
+      window.alert("当前会话为空，没有可导出的内容。");
+      return;
+    }
+
+    const exportText = exportConversationText(currentSession, messages);
+
+    try {
+      await navigator.clipboard.writeText(exportText);
+      window.alert(`会话文本已复制，共 ${exportText.length.toLocaleString()} 字符。`);
+      return;
+    } catch (error) {
+      console.warn("[AI Assistant] Failed to copy conversation export, falling back to download", error);
+    }
+
+    const safeTitle = (currentSession?.title || "ai-assistant-session")
+      .replace(/[\\/:*?"<>|]+/g, "_")
+      .slice(0, 48);
+    const blob = new Blob([exportText], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${safeTitle || "ai-assistant-session"}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    window.alert(`剪贴板不可用，已导出为文本文件，共 ${exportText.length.toLocaleString()} 字符。`);
+  }, [currentSession, messages]);
 
   const handleSizeChange = React.useCallback(
     (value: ExpansionRect) => {
@@ -238,7 +284,11 @@ const AIAssistant: React.FC<PluginContext> = ({ vm, workspace }) => {
             minHeight={300}
             borderRadius={8}
           >
-            <div className={styles.container}>
+            <div
+              className={`${styles.container} ${shell.appShell} ${themeStyles.themeRoot} ${
+                themeMode === "dark" ? themeStyles.themeDark : themeStyles.themeLight
+              }`}
+            >
               {/* Left Panel */}
               {!useDrawerHistory && isLeftPanelOpen && (
                 <HistoryPanel
@@ -251,41 +301,45 @@ const AIAssistant: React.FC<PluginContext> = ({ vm, workspace }) => {
               )}
 
               {/* Right Panel */}
-              <div className={styles.rightPanel}>
-                <div className={styles.header}>
-                  <div className={styles.headerMain}>
-                    <div className={styles.headerLeft}>
+              <div className={shell.mainPanel}>
+                <div className={shell.topBar}>
+                  <div className={shell.topBarMain}>
+                    <div className={shell.topBarLeft}>
                       <button
                         type="button"
-                        className={styles.togglePanelBtn}
+                        className={shell.iconButton}
                         onClick={() => setIsLeftPanelOpen((previous) => !previous)}
                         title={isLeftPanelOpen ? "收起历史记录" : "展开历史记录"}
                       >
-                        {useDrawerHistory ? "历史" : isLeftPanelOpen ? "收起" : "展开"}
+                        {useDrawerHistory ? "☰" : isLeftPanelOpen ? "←" : "☰"}
                       </button>
-                      <div className={styles.agentSelector} ref={agentMenuRef}>
+                      <div className={shell.workspaceTitle}>
+                        <span>Scratch AI Agent</span>
+                        <small>Virtual files · live blocks</small>
+                      </div>
+                    </div>
+                    <div className={shell.topBarCenter}>
+                      <div className={shell.modelSelector} ref={agentMenuRef}>
                         <button
                           type="button"
-                          className={`${styles.agentSelectorTrigger} ${isAgentMenuOpen ? styles.agentSelectorTriggerActive : ""}`}
+                          className={`${shell.modelSelectorTrigger} ${isAgentMenuOpen ? shell.modelSelectorTriggerActive : ""}`}
                           onClick={() => setIsAgentMenuOpen((open) => !open)}
                           aria-haspopup="listbox"
                           aria-expanded={isAgentMenuOpen}
                           title={currentAgent?.displayName || "选择模型"}
                         >
-                          <span className={styles.agentSelectorText}>
-                            <span className={styles.agentSelectorPrimary}>
-                              {currentAgent?.displayName || "未选择模型"}
-                            </span>
-                          </span>
-                          <span className={styles.agentSelectorChevron}>{isAgentMenuOpen ? "▴" : "▾"}</span>
+                          <span className={shell.modelSelectorText}>{currentAgent?.displayName || "未选择模型"}</span>
+                          <span className={shell.modelSelectorChevron}>{isAgentMenuOpen ? "▴" : "▾"}</span>
                         </button>
                         {isAgentMenuOpen ? (
-                          <div className={styles.agentMenu} role="listbox" aria-label="选择模型" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                          <div className={shell.modelMenu} role="listbox" aria-label="选择模型">
                             {flattenedModels.map((model) => (
                               <button
                                 key={model.id}
                                 type="button"
-                                className={`${styles.agentMenuItem} ${model.id === currentAgent?.id ? styles.agentMenuItemActive : ""}`}
+                                className={`${shell.modelMenuItem} ${
+                                  model.id === currentAgent?.id ? shell.modelMenuItemActive : ""
+                                }`}
                                 onClick={() => {
                                   setCurrentModelId(model.id);
                                   setIsAgentMenuOpen(false);
@@ -294,7 +348,7 @@ const AIAssistant: React.FC<PluginContext> = ({ vm, workspace }) => {
                                 aria-selected={model.id === currentAgent?.id}
                                 title={`${model.displayName} (${model.modelName})`}
                               >
-                                <span className={styles.agentMenuPrimary}>{model.displayName}</span>
+                                <span>{model.displayName}</span>
                               </button>
                             ))}
                           </div>
@@ -302,8 +356,16 @@ const AIAssistant: React.FC<PluginContext> = ({ vm, workspace }) => {
                       </div>
                     </div>
                   </div>
-                  <div className={styles.headerActions}>
-                    <button type="button" className={styles.secondaryButton} onClick={() => setShowSettings(true)}>
+                  <div className={shell.topBarActions}>
+                    <button
+                      type="button"
+                      className={shell.secondaryButton}
+                      onClick={() => void handleExportConversation()}
+                      title="复制精简会话文本，包含工具调用参数和返回结果"
+                    >
+                      导出会话
+                    </button>
+                    <button type="button" className={shell.secondaryButton} onClick={() => setShowSettings(true)}>
                       设置
                     </button>
                   </div>
@@ -349,6 +411,8 @@ const AIAssistant: React.FC<PluginContext> = ({ vm, workspace }) => {
                     onExportAgent={handleExportAgent}
                     onImportAgent={handleImportAgents}
                     onEditAgent={setEditingAgent}
+                    themeMode={themeMode}
+                    onThemeModeChange={setThemeMode}
                     onClose={() => {
                       setShowSettings(false);
                       setEditingAgent(null);
