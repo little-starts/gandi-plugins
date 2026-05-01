@@ -174,20 +174,24 @@ const normalizePatchContextLine = (line: string) => {
 const findLooseHunkLineRange = (content: string, oldText: string) => {
   const contentLines = content.split("\n");
   const oldLines = oldText.split("\n");
-  const normalizedOldLines = oldLines.map(normalizePatchContextLine);
+  let effectiveOldLines = oldLines;
+  while (effectiveOldLines.length > 0 && normalizePatchContextLine(effectiveOldLines[effectiveOldLines.length - 1]) === "") {
+    effectiveOldLines = effectiveOldLines.slice(0, -1);
+  }
+  const normalizedOldLines = effectiveOldLines.map(normalizePatchContextLine);
 
-  if (oldLines.length === 0 || normalizedOldLines.every((line) => !line)) return null;
+  if (effectiveOldLines.length === 0 || normalizedOldLines.every((line) => !line)) return null;
 
-  for (let start = 0; start <= contentLines.length - oldLines.length; start += 1) {
+  for (let start = 0; start <= contentLines.length - effectiveOldLines.length; start += 1) {
     let matched = true;
-    for (let offset = 0; offset < oldLines.length; offset += 1) {
+    for (let offset = 0; offset < effectiveOldLines.length; offset += 1) {
       if (normalizePatchContextLine(contentLines[start + offset]) !== normalizedOldLines[offset]) {
         matched = false;
         break;
       }
     }
     if (matched) {
-      return { start, end: start + oldLines.length };
+      return { start, end: start + effectiveOldLines.length };
     }
   }
 

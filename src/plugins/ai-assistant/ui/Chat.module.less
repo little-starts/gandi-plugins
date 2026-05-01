@@ -9,7 +9,6 @@
   padding: 20px 64px var(--ai-chat-bottom-safe-area);
   background: var(--ai-bg-app);
   scroll-padding-bottom: var(--ai-chat-bottom-safe-area);
-  scroll-behavior: smooth;
 }
 
 .conversationRail {
@@ -21,6 +20,12 @@
   flex-direction: column;
   gap: 14px;
   padding-bottom: 10px;
+}
+
+.bottomAnchor {
+  width: 100%;
+  height: 1px;
+  flex: 0 0 1px;
 }
 
 .emptyState {
@@ -60,7 +65,13 @@
 .messageRow {
   position: relative;
   width: 100%;
-  animation: messageEnter 180ms var(--ai-ease) both;
+  transform-origin: 50% 100%;
+  animation: messageEnter 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: opacity, transform, filter;
+}
+
+.messageRowLive {
+  animation: messageEnter 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .assistantMessage {
@@ -109,6 +120,7 @@
   border: 1px solid var(--ai-border);
   border-radius: var(--ai-radius-xl);
   background: var(--ai-bg-elevated);
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--ai-shadow-medium) 28%, transparent);
 }
 
 .messageText {
@@ -129,10 +141,43 @@
 }
 
 .messageMarkdown {
+  position: relative;
   color: var(--ai-text-primary);
   overflow-wrap: anywhere;
   font-size: 13px;
   line-height: 1.82;
+}
+
+.messageMarkdownStreaming > :where(p, h1, h2, h3, h4):last-child,
+.messageMarkdownStreaming > ul:last-child > li:last-child,
+.messageMarkdownStreaming > ol:last-child > li:last-child {
+  background-image: linear-gradient(
+    105deg,
+    var(--ai-text-primary) 0%,
+    var(--ai-text-primary) 43%,
+    color-mix(in srgb, var(--ai-accent) 70%, var(--ai-text-primary)) 48%,
+    color-mix(in srgb, var(--ai-success) 48%, var(--ai-text-primary)) 51%,
+    var(--ai-text-primary) 57%,
+    var(--ai-text-primary) 100%
+  );
+  background-size: 360% 100%;
+  animation: streamingTextShine 3.2s linear infinite;
+}
+
+@supports (-webkit-background-clip: text) or (background-clip: text) {
+  .messageMarkdownStreaming > :where(p, h1, h2, h3, h4):last-child,
+  .messageMarkdownStreaming > ul:last-child > li:last-child,
+  .messageMarkdownStreaming > ol:last-child > li:last-child {
+    color: transparent;
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .messageMarkdownStreaming .markdownInlineCode {
+    color: var(--ai-text-primary);
+    -webkit-text-fill-color: var(--ai-text-primary);
+  }
 }
 
 .messageMarkdown p,
@@ -224,6 +269,16 @@
   vertical-align: baseline;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
+  transition:
+    background var(--ai-transition),
+    border-color var(--ai-transition),
+    transform var(--ai-transition-fast);
+}
+
+.messageMarkdownStreaming > :where(p, h1, h2, h3, h4):last-child .markdownInlineCode,
+.messageMarkdownStreaming > ul:last-child > li:last-child .markdownInlineCode,
+.messageMarkdownStreaming > ol:last-child > li:last-child .markdownInlineCode {
+  animation: inlineCodeGlow 2.4s ease-in-out infinite;
 }
 
 .messageMarkdown pre {
@@ -234,6 +289,8 @@
   border-radius: var(--ai-radius-lg);
   background: var(--ai-bg-code);
   color: var(--ai-text-secondary);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 5%, transparent);
+  animation: codeBlockRise 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .markdownCode {
@@ -282,6 +339,31 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.reasoningInlineActive .reasoningInlineButton {
+  position: relative;
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--ai-accent) 34%, var(--ai-border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ai-accent) 12%, transparent);
+}
+
+.reasoningInlineActive .reasoningInlineButton::after {
+  content: "";
+  position: absolute;
+  inset: -80% -24%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--ai-accent) 22%, transparent),
+    transparent
+  );
+  transform: translateX(-70%) rotate(12deg);
+  animation: reasoningSweep 1.65s ease-in-out infinite;
+}
+
+.reasoningInlineActive .reasoningInlineLabel {
+  animation: labelBreath 1.6s ease-in-out infinite;
 }
 
 .reasoningInlineButton {
@@ -386,6 +468,7 @@
   color: var(--ai-text-secondary);
   cursor: pointer;
   box-shadow: var(--ai-shadow-floating);
+  animation: scrollButtonEnter 260ms var(--ai-ease) both;
 }
 
 .scrollToBottomButton:hover {
@@ -462,11 +545,116 @@
 @keyframes messageEnter {
   from {
     opacity: 0;
-    transform: translateY(5px);
+    filter: blur(8px);
+    transform: translateY(14px) scale(0.985);
+  }
+  58% {
+    opacity: 1;
+    filter: blur(1px);
+    transform: translateY(-1px) scale(1.002);
   }
   to {
     opacity: 1;
+    filter: blur(0);
     transform: translateY(0);
+  }
+}
+
+@keyframes liveTurnBreath {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  50% {
+    filter: drop-shadow(0 0 18px color-mix(in srgb, var(--ai-accent) 10%, transparent));
+  }
+}
+
+@keyframes textBreath {
+  0%,
+  100% {
+    text-shadow: 0 0 0 transparent;
+  }
+  50% {
+    text-shadow: 0 0 10px color-mix(in srgb, var(--ai-accent) 12%, transparent);
+  }
+}
+
+@keyframes streamingTextShine {
+  0% {
+    background-position: 160% 0;
+  }
+  100% {
+    background-position: -160% 0;
+  }
+}
+
+@keyframes inlineCodeGlow {
+  0%,
+  100% {
+    border-color: color-mix(in srgb, var(--ai-border-strong) 72%, transparent);
+    box-shadow: 0 0 0 transparent;
+  }
+  50% {
+    border-color: color-mix(in srgb, var(--ai-accent) 36%, var(--ai-border));
+    box-shadow: 0 0 18px color-mix(in srgb, var(--ai-accent) 15%, transparent);
+  }
+}
+
+@keyframes codeBlockRise {
+  from {
+    opacity: 0;
+    filter: blur(6px);
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+
+@keyframes reasoningSweep {
+  to {
+    transform: translateX(72%) rotate(12deg);
+  }
+}
+
+@keyframes labelBreath {
+  0%,
+  100% {
+    color: var(--ai-text-muted);
+  }
+  50% {
+    color: var(--ai-text-primary);
+  }
+}
+
+@keyframes scrollButtonEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .messageRow,
+  .messageRowLive,
+  .messageMarkdownStreaming > :where(p, h1, h2, h3, h4):last-child,
+  .messageMarkdownStreaming > ul:last-child > li:last-child,
+  .messageMarkdownStreaming > ol:last-child > li:last-child,
+  .messageMarkdownStreaming > :where(p, h1, h2, h3, h4):last-child .markdownInlineCode,
+  .messageMarkdownStreaming > ul:last-child > li:last-child .markdownInlineCode,
+  .messageMarkdownStreaming > ol:last-child > li:last-child .markdownInlineCode,
+  .messageMarkdown pre,
+  .reasoningInlineActive .reasoningInlineButton::after,
+  .reasoningInlineActive .reasoningInlineLabel,
+  .scrollToBottomButton {
+    animation: none;
   }
 }
 

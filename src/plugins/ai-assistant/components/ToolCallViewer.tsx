@@ -365,14 +365,14 @@ export const ToolCallViewer: React.FC<ToolCallViewerProps> = ({
   const errorCount = entries.filter((entry) => entry.status === "error").length;
   const changedFiles = React.useMemo(() => collectChangedFiles(entries), [entries]);
   const diagnostics = React.useMemo(() => countDiagnostics(entries), [entries]);
-  const hasRunning = runningCount > 0 || isGenerating;
+  const hasRunning = runningCount > 0;
 
   React.useEffect(() => {
     setExpandedDetails((previous) => {
       let changed = false;
       const next = { ...previous };
       entries.forEach((entry) => {
-        if ((entry.name === "applyPatch" || entry.status === "error") && next[entry.id] === undefined) {
+        if (entry.name === "applyPatch" && entry.status !== "error" && next[entry.id] === undefined) {
           next[entry.id] = true;
           changed = true;
         }
@@ -386,7 +386,7 @@ export const ToolCallViewer: React.FC<ToolCallViewerProps> = ({
   };
 
   return (
-    <div className={toolStyles.toolCallSummary}>
+    <div className={`${toolStyles.toolCallSummary} ${hasRunning ? toolStyles.toolCallSummaryRunning : ""}`}>
       <button type="button" className={toolStyles.toolCallSummaryHeader} onClick={() => setExpanded((prev) => !prev)}>
         <span className={`${toolStyles.toolCallPulse} ${hasRunning ? toolStyles.toolCallPulseActive : ""}`} />
         <span className={toolStyles.toolCallSummaryTitle}>
@@ -439,7 +439,12 @@ export const ToolCallViewer: React.FC<ToolCallViewerProps> = ({
 
           <div className={toolStyles.toolCallList}>
             {entries.map((entry) => (
-              <div key={entry.id} className={toolStyles.toolCallItem}>
+              <div
+                key={entry.id}
+                className={`${toolStyles.toolCallItem} ${
+                  entry.status === "running" ? toolStyles.toolCallItemRunning : ""
+                }`}
+              >
                 <button type="button" className={toolStyles.toolCallItemHeader} onClick={() => toggleDetail(entry.id)}>
                   <ToolIcon status={entry.status} />
                   <span className={toolStyles.toolCallName}>{TOOL_LABELS[entry.name] || entry.name}</span>

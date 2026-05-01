@@ -160,6 +160,8 @@ const markdownComponents = {
   code: MarkdownCode,
 };
 
+const STICKY_BOTTOM_DISTANCE = 48;
+
 const ReasoningChevron = ({ expanded }: { expanded: boolean }) => (
   <span
     style={{
@@ -418,28 +420,115 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     [messages, isGenerating],
   );
   const scrollRef = React.useRef<HTMLDivElement | null>(null);
+  const railRef = React.useRef<HTMLDivElement | null>(null);
+  const bottomRef = React.useRef<HTMLDivElement | null>(null);
+  const stickyRef = React.useRef(true);
+  const userDetachedRef = React.useRef(false);
+  const scrollFrameRef = React.useRef<number | null>(null);
   const [isStickyToBottom, setIsStickyToBottom] = React.useState(true);
   const [reasoningPanels, setReasoningPanels] = React.useState<Record<string, ReasoningPanelState>>({});
+
+  const setStickyState = React.useCallback((nextSticky: boolean) => {
+    stickyRef.current = nextSticky;
+    setIsStickyToBottom(nextSticky);
+  }, []);
+
+  const cancelScheduledScroll = React.useCallback(() => {
+    if (scrollFrameRef.current !== null) {
+      window.cancelAnimationFrame(scrollFrameRef.current);
+      scrollFrameRef.current = null;
+    }
+  }, []);
 
   const scrollToBottom = React.useCallback((behavior: ScrollBehavior = "smooth") => {
     const element = scrollRef.current;
     if (!element) return;
-    element.scrollTo({ top: element.scrollHeight, behavior });
-  }, []);
+    const targetTop = Math.max(0, element.scrollHeight - element.clientHeight);
+    userDetachedRef.current = false;
+    setStickyState(true);
+
+    if (behavior === "smooth") {
+      element.scrollTo({ top: targetTop, behavior });
+      return;
+    }
+
+    element.scrollTop = targetTop;
+  }, [setStickyState]);
+
+  const detachFromAutoScroll = React.useCallback(() => {
+    cancelScheduledScroll();
+    userDetachedRef.current = true;
+    setStickyState(false);
+  }, [cancelScheduledScroll, setStickyState]);
 
   const handleScroll = React.useCallback(() => {
     const element = scrollRef.current;
     if (!element) return;
 
     const distanceToBottom = element.scrollHeight - element.scrollTop - element.clientHeight;
-    setIsStickyToBottom(distanceToBottom <= 24);
-  }, []);
+    if (userDetachedRef.current) {
+      const isBackAtBottom = distanceToBottom <= 4;
+      if (isBackAtBottom) {
+        userDetachedRef.current = false;
+      }
+      setStickyState(isBackAtBottom);
+      return;
+    }
+
+    setStickyState(distanceToBottom <= STICKY_BOTTOM_DISTANCE);
+  }, [setStickyState]);
+
+  const handleWheel = React.useCallback(
+    (event: React.WheelEvent<HTMLDivElement>) => {
+      if (event.deltaY < -1) {
+        detachFromAutoScroll();
+      }
+    },
+    [detachFromAutoScroll],
+  );
+
+  const scheduleFollowBottom = React.useCallback((behavior: ScrollBehavior = "auto") => {
+    if (!stickyRef.current) return;
+
+    if (scrollFrameRef.current !== null) {
+      window.cancelAnimationFrame(scrollFrameRef.current);
+    }
+
+    scrollFrameRef.current = window.requestAnimationFrame(() => {
+      scrollFrameRef.current = null;
+      scrollToBottom("auto");
+      if (behavior === "smooth") {
+        window.requestAnimationFrame(() => scrollToBottom("smooth"));
+      }
+    });
+  }, [scrollToBottom]);
+
+  React.useLayoutEffect(() => {
+    if (stickyRef.current) {
+      scheduleFollowBottom("auto");
+    }
+  }, [displayItems, isGenerating, scheduleFollowBottom]);
 
   React.useEffect(() => {
-    if (isStickyToBottom) {
-      scrollToBottom("auto");
-    }
-  }, [displayItems, isGenerating, isStickyToBottom, scrollToBottom]);
+    const scrollElement = scrollRef.current;
+    const railElement = railRef.current;
+    if (!scrollElement || !railElement || typeof ResizeObserver === "undefined") return undefined;
+
+    const observer = new ResizeObserver(() => {
+      if (stickyRef.current) {
+        scheduleFollowBottom("auto");
+      }
+    });
+
+    observer.observe(railElement);
+    observer.observe(scrollElement);
+    return () => observer.disconnect();
+  }, [isGenerating, scheduleFollowBottom]);
+
+  React.useEffect(
+    () => () => cancelScheduledScroll(),
+    [cancelScheduledScroll],
+  );
 
   React.useEffect(() => {
     setReasoningPanels((previous) => {
@@ -495,8 +584,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   }, []);
 
   return (
-    <div className={chat.chatArea} ref={scrollRef} onScroll={handleScroll}>
-      <div className={chat.conversationRail}>
+    <div className={chat.chatArea} ref={scrollRef} onScroll={handleScroll} onWheel={handleWheel}>
+      <div className={chat.conversationRail} ref={railRef}>
         {displayItems.length === 0 ? (
           <div className={chat.emptyState}>
             <span className={chat.emptyStateBadge}>AI Assistant</span>
@@ -507,6 +596,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
           </div>
         ) : (
           displayItems.map((item, index) => {
+            const isLatestLiveItem = isGenerating && index === displayItems.length - 1;
             if ("role" in item) {
               return (
                 <div key={item.id || index} className={`${chat.messageRow} ${chat.userMessage}`}>
@@ -548,20 +638,37 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               );
             }
 
+            const latestStreamingTextSegmentId = isLatestLiveItem
+              ? [...item.segments].reverse().find((segment) => segment.type === "text")?.id
+              : undefined;
+
             return (
-              <div key={item.sourceMessage.id || index} className={`${chat.messageRow} ${chat.assistantMessage}`}>
+              <div
+                key={item.sourceMessage.id || index}
+                className={`${chat.messageRow} ${chat.assistantMessage} ${isLatestLiveItem ? chat.messageRowLive : ""}`}
+              >
                 <div className={chat.messageTurnBody}>
                   <div className={`${chat.messageBubble} ${chat.messageBubbleAssistant}`}>
                     <div className={chat.assistantSegments}>
                       {item.segments.map((segment) =>
                         segment.type === "text" ? (
-                          <div key={segment.id} className={chat.messageMarkdown}>
+                          <div
+                            key={segment.id}
+                            className={`${chat.messageMarkdown} ${
+                              segment.id === latestStreamingTextSegmentId ? chat.messageMarkdownStreaming : ""
+                            }`}
+                          >
                             <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                               {segment.content}
                             </ReactMarkdown>
                           </div>
                         ) : segment.type === "reasoning" ? (
-                          <div key={segment.id} className={chat.reasoningInline}>
+                          <div
+                            key={segment.id}
+                            className={`${chat.reasoningInline} ${
+                              !segment.isComplete && isLatestLiveItem ? chat.reasoningInlineActive : ""
+                            }`}
+                          >
                             <button
                               type="button"
                               className={chat.reasoningInlineButton}
@@ -632,6 +739,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
             </div>
           </div>
         ) : null}
+        <div ref={bottomRef} className={chat.bottomAnchor} aria-hidden="true" />
       </div>
       {!isStickyToBottom ? (
         <button className={chat.scrollToBottomButton} onClick={() => scrollToBottom()} title="回到底部">
