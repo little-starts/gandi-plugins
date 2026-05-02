@@ -23,6 +23,7 @@ import { Attachment } from "./types";
 import { getAttachmentDisplayName } from "./attachmentUtils";
 import { callGetBlockInfo, setRuntime } from "./converter";
 import { exportConversationText } from "./conversationExport";
+// import { ConverterDebugger } from "./components/ConverterDebugger";
 
 const DEFAULT_CONTAINER_INFO = {
   width: 800,
@@ -35,6 +36,7 @@ type ThemeMode = "dark" | "light";
 const THEME_STORAGE_KEY = "AI_ASSISTANT_THEME_MODE";
 
 const AIAssistant: React.FC<PluginContext> = ({ vm, workspace }) => {
+  console.log(`[AI Assistant] Rendering\n vm:`, vm)
   const [visible, setVisible] = React.useState(false);
   const [isAgentMenuOpen, setIsAgentMenuOpen] = React.useState(false);
   const [isComposerExpanded, setIsComposerExpanded] = React.useState(false);
@@ -270,11 +272,12 @@ const AIAssistant: React.FC<PluginContext> = ({ vm, workspace }) => {
   }
 
   return ReactDOM.createPortal(
-    <section className={styles.aiAssistantRoot} ref={containerRef}>
-      <Tooltip className={styles.icon} icon={<AIAssistantIcon />} onClick={handleShow} tipText={"AI Assistant"} />
-      {visible &&
-        ReactDOM.createPortal(
-          <ExpansionBox
+    <>
+      <section className={styles.aiAssistantRoot} ref={containerRef}>
+        <Tooltip className={styles.icon} icon={<AIAssistantIcon />} onClick={handleShow} tipText={"AI Assistant"} />
+        {visible &&
+          ReactDOM.createPortal(
+            <ExpansionBox
             id="ai-assistant"
             title={"AI Assistant"}
             containerInfo={containerInfo}
@@ -469,7 +472,9 @@ const AIAssistant: React.FC<PluginContext> = ({ vm, workspace }) => {
           </ExpansionBox>,
           document.body,
         )}
-    </section>,
+      </section>
+      {/*<ConverterDebugger vm={vm} workspace={workspace} />*/}
+    </>,
     pluginsWrapper,
   );
 };

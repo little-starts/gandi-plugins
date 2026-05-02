@@ -670,11 +670,14 @@ export class AITools {
 
   constructor(vm: any) {
     this.vm = vm;
-    if (vm && vm.runtime) {
+    if (vm?.runtime) {
       setRuntime(vm.runtime);
       repairListVariableValues(vm);
     }
-    setGetBlockInfoTool((opcode: string) => this.getBlockInfo(opcode));
+    const fn = (opcode: string) => this.getBlockInfo(opcode);
+    if (typeof fn === 'function') {
+      setGetBlockInfoTool(fn);
+    }
   }
 
   private _getTarget(targetId?: string) {
@@ -2540,10 +2543,12 @@ export class AITools {
       if (!menuName) return;
 
       const existingOptions = Array.isArray(entry.menuOptions) ? entry.menuOptions : null;
-      const existingMenuType = typeof entry.menuType === "string" ? entry.menuType : null;
+      const preDefinedMenuType = menuSummary[menuName]?.menuType || null;
+      const existingMenuType = typeof entry.menuType === "string" ? entry.menuType : preDefinedMenuType;
       const fromExt = this._menuConfigToOptions(extMenus?.[menuName]);
       const fromShadow = this._readMenuOptionsFromShadowBlock(opcode, menuName, activeRuntime);
       const menuOptions = existingOptions || fromExt || fromShadow || null;
+
       const placeable =
         existingMenuType === "placeable" ||
         (existingMenuType !== "non_placeable" &&
@@ -3208,6 +3213,7 @@ export class AITools {
           for (const block of extInfo.blocks) {
             const fullOpcode = `${extInfo.id}_${block.info?.opcode}`;
             if (fullOpcode === resolvedOpcode || block.info?.opcode === resolvedOpcode) {
+              console.log(`[Debug] Matched ext block: ${resolvedOpcode} in ${extInfo.id}`);
               result.found = true;
               result.blockType = this._normalizeBlockType(block.info?.blockType);
               result.extensionId = extInfo.id || null;
@@ -3238,7 +3244,8 @@ export class AITools {
                 }
               }
 
-              if (extInfo?.menus && typeof extInfo.menus === "object") {
+              const menuInfoSource = extInfo?.menuInfo || extInfo?.menus;
+              if (menuInfoSource && typeof menuInfoSource === "object") {
                 const usedMenuNames = new Set<string>();
                 for (const meta of Object.values(result.fields)) {
                   const menuName = (meta as any)?.menu;
@@ -3249,14 +3256,34 @@ export class AITools {
                   if (typeof menuName === "string" && menuName) usedMenuNames.add(menuName);
                 }
                 for (const menuName of usedMenuNames) {
-                  if (extInfo.menus[menuName] !== undefined) {
+                  const hasMenuConfig = !Array.isArray(menuInfoSource) ? menuInfoSource[menuName] !== undefined : false;
+                  console.log(`[Debug] Trying to process menu: ${menuName}, exists in extInfo.menuInfo: ${hasMenuConfig}`);
+                  
+                  if (hasMenuConfig) {
+                    // Try to find outputShape from the corresponding block json in extInfo.menus array
+                    let acceptReporters = menuInfoSource[menuName]?.acceptReporters;
+                    if (acceptReporters === undefined && Array.isArray(extInfo.menus)) {
+                       const menuBlockType = `${extInfo.id}_menu_${menuName}`;
+                       const menuBlock = extInfo.menus.find((m: any) => m.json && m.json.type === menuBlockType);
+                       if (menuBlock && menuBlock.json) {
+                         // outputShape 2 is round (placeable), 3 is rectangular (non_placeable)
+                         if (menuBlock.json.outputShape === 2) acceptReporters = true;
+                         else if (menuBlock.json.outputShape === 3) acceptReporters = false;
+                       }
+                    }
+
+                    console.log(`[Debug] getBlockInfo pre-set menu: ${menuName}, acceptReporters: ${acceptReporters}`);
                     result.menus = result.menus || {};
-                    result.menus[menuName] = extInfo.menus[menuName];
+                    result.menus[menuName] = {
+                      options: this._menuConfigToOptions(menuInfoSource[menuName]),
+                      menuType: acceptReporters ? "placeable" : "non_placeable",
+                      sources: [],
+                    };
                   }
                 }
               }
 
-              this._enrichMenuMeta(resolvedOpcode, result, extInfo?.menus, this.vm.runtime);
+              this._enrichMenuMeta(resolvedOpcode, result, menuInfoSource, this.vm.runtime);
               break;
             }
           }

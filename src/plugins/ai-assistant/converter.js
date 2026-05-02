@@ -207,11 +207,24 @@ function getExpectedShadowInfo(opcode, inputName, rt) {
     if (argInfo && argInfo.menu) {
         const activeRuntime = rt || runtime;
         const namespace = String(opcode).includes('_') ? String(opcode).split('_')[0] : '';
+        const lowerInput = String(inputName || '').toLowerCase();
+        const lowerInputNoUnderscore = lowerInput.replace(/_/g, '');
+        const lowerMenu = String(argInfo.menu || '').toLowerCase();
+        const lowerMenuNoUnderscore = lowerMenu.replace(/_/g, '');
+        const optionBase = lowerInput.endsWith('_option') ? lowerInput.slice(0, -'_option'.length) : null;
+        const menuBase = lowerMenu.endsWith('_menu') ? lowerMenu.slice(0, -'_menu'.length) : null;
         const candidates = [
             `${opcode}_menu`,
             namespace ? `${namespace}_menu_${argInfo.menu}` : '',
             `${argInfo.menu}_menu`,
-            argInfo.menu
+            argInfo.menu,
+            namespace ? `${namespace}_${lowerInput}` : '',
+            namespace ? `${namespace}_${lowerInputNoUnderscore}` : '',
+            namespace && optionBase ? `${namespace}_${optionBase}options` : '',
+            namespace && menuBase ? `${namespace}_${menuBase}menu` : '',
+            namespace && menuBase ? `${namespace}_${menuBase.replace(/_/g, '')}menu` : '',
+            namespace && lowerMenu ? `${namespace}_${lowerMenu}` : '',
+            namespace && lowerMenuNoUnderscore ? `${namespace}_${lowerMenuNoUnderscore}` : ''
         ].filter(Boolean);
         const candidate = candidates.find(item => Boolean(
             (activeRuntime && activeRuntime._primitives && activeRuntime._primitives[item]) ||
@@ -231,7 +244,7 @@ function getExpectedShadowInfo(opcode, inputName, rt) {
 function getMenuShadowFieldName(menuOpcode, inputName, menuName) {
     if (menuOpcode === 'event_broadcast_menu') return 'BROADCAST_OPTION';
     if (menuOpcode === 'pen_menu_colorParam') return 'colorParam';
-    return menuName || inputName;
+    return inputName || menuName;
 }
 
 function isEventHatOpcode(opcode) {

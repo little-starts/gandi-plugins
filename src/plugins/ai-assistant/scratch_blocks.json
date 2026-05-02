@@ -8,7 +8,10 @@
             "blockType": "COMMAND",
             "text": "move [STEPS] steps",
             "arguments": {
-              "STEPS": {"type": "NUMBER", "defaultValue": 10}
+              "STEPS": {
+                "type": "NUMBER",
+                "defaultValue": 10
+              }
             }
           },
           {
@@ -16,8 +19,14 @@
             "blockType": "COMMAND",
             "text": "go to x: [X] y: [Y]",
             "arguments": {
-              "X": {"type": "NUMBER", "defaultValue": 0},
-              "Y": {"type": "NUMBER", "defaultValue": 0}
+              "X": {
+                "type": "NUMBER",
+                "defaultValue": 0
+              },
+              "Y": {
+                "type": "NUMBER",
+                "defaultValue": 0
+              }
             }
           },
           {
@@ -25,7 +34,10 @@
             "blockType": "COMMAND",
             "text": "go to [TO]",
             "arguments": {
-              "TO": {"type": "STRING", "menu": "DESTINATION_MENU"}
+              "TO": {
+                "type": "STRING",
+                "menu": "DESTINATION_MENU"
+              }
             }
           },
           {
@@ -33,7 +45,10 @@
             "blockType": "COMMAND",
             "text": "turn right [DEGREES] degrees",
             "arguments": {
-              "DEGREES": {"type": "NUMBER", "defaultValue": 15}
+              "DEGREES": {
+                "type": "NUMBER",
+                "defaultValue": 15
+              }
             }
           },
           {
@@ -41,7 +56,10 @@
             "blockType": "COMMAND",
             "text": "turn left [DEGREES] degrees",
             "arguments": {
-              "DEGREES": {"type": "NUMBER", "defaultValue": 15}
+              "DEGREES": {
+                "type": "NUMBER",
+                "defaultValue": 15
+              }
             }
           },
           {
@@ -49,7 +67,10 @@
             "blockType": "COMMAND",
             "text": "point in direction [DIRECTION]",
             "arguments": {
-              "DIRECTION": {"type": "ANGLE", "defaultValue": 90}
+              "DIRECTION": {
+                "type": "ANGLE",
+                "defaultValue": 90
+              }
             }
           },
           {
@@ -57,7 +78,10 @@
             "blockType": "COMMAND",
             "text": "point towards [TOWARDS]",
             "arguments": {
-              "TOWARDS": {"type": "STRING", "menu": "TOUCHING_OBJECT_MENU"}
+              "TOWARDS": {
+                "type": "STRING",
+                "menu": "TOUCHING_OBJECT_MENU"
+              }
             }
           },
           {
@@ -65,9 +89,18 @@
             "blockType": "COMMAND",
             "text": "glide [SECS] secs to x: [X] y: [Y]",
             "arguments": {
-              "SECS": {"type": "NUMBER", "defaultValue": 1},
-              "X": {"type": "NUMBER", "defaultValue": 0},
-              "Y": {"type": "NUMBER", "defaultValue": 0}
+              "SECS": {
+                "type": "NUMBER",
+                "defaultValue": 1
+              },
+              "X": {
+                "type": "NUMBER",
+                "defaultValue": 0
+              },
+              "Y": {
+                "type": "NUMBER",
+                "defaultValue": 0
+              }
             }
           },
           {
@@ -75,8 +108,14 @@
             "blockType": "COMMAND",
             "text": "glide [SECS] secs to [TO]",
             "arguments": {
-              "SECS": {"type": "NUMBER", "defaultValue": 1},
-              "TO": {"type": "STRING", "menu": "DESTINATION_MENU"}
+              "SECS": {
+                "type": "NUMBER",
+                "defaultValue": 1
+              },
+              "TO": {
+                "type": "STRING",
+                "menu": "DESTINATION_MENU"
+              }
             }
           },
           {
@@ -89,7 +128,10 @@
             "blockType": "COMMAND",
             "text": "set rotation style [STYLE]",
             "arguments": {
-              "STYLE": {"type": "STRING", "menu": "ROTATION_STYLE_MENU"}
+              "STYLE": {
+                "type": "STRING",
+                "menu": "ROTATION_STYLE_MENU"
+              }
             }
           },
           {
@@ -97,7 +139,10 @@
             "blockType": "COMMAND",
             "text": "change x by [DX]",
             "arguments": {
-              "DX": {"type": "NUMBER", "defaultValue": 10}
+              "DX": {
+                "type": "NUMBER",
+                "defaultValue": 10
+              }
             }
           },
           {
@@ -105,7 +150,10 @@
             "blockType": "COMMAND",
             "text": "set x to [X]",
             "arguments": {
-              "X": {"type": "NUMBER", "defaultValue": 0}
+              "X": {
+                "type": "NUMBER",
+                "defaultValue": 0
+              }
             }
           },
           {
@@ -113,7 +161,10 @@
             "blockType": "COMMAND",
             "text": "change y by [DY]",
             "arguments": {
-              "DY": {"type": "NUMBER", "defaultValue": 10}
+              "DY": {
+                "type": "NUMBER",
+                "defaultValue": 10
+              }
             }
           },
           {
@@ -121,7 +172,10 @@
             "blockType": "COMMAND",
             "text": "set y to [Y]",
             "arguments": {
-              "Y": {"type": "NUMBER", "defaultValue": 0}
+              "Y": {
+                "type": "NUMBER",
+                "defaultValue": 0
+              }
             }
           },
           {
@@ -145,24 +199,45 @@
             "acceptReporters": true,
             "isDynamic": true,
             "items": [
-              {"text": "_mouse_", "value": "_mouse_"},
-              {"text": "_random_", "value": "_random_"}
+              {
+                "text": "_mouse_",
+                "value": "_mouse_"
+              },
+              {
+                "text": "_random_",
+                "value": "_random_"
+              }
             ]
           },
           "TOUCHING_OBJECT_MENU": {
             "acceptReporters": true,
             "isDynamic": true,
             "items": [
-              {"text": "_mouse_", "value": "_mouse_"},
-              {"text": "_random_", "value": "_random_"}
+              {
+                "text": "_mouse_",
+                "value": "_mouse_"
+              },
+              {
+                "text": "_random_",
+                "value": "_random_"
+              }
             ]
           },
           "ROTATION_STYLE_MENU": {
             "acceptReporters": false,
             "items": [
-              {"text": "left-right", "value": "left-right"},
-              {"text": "don't rotate", "value": "don't rotate"},
-              {"text": "all around", "value": "all around"}
+              {
+                "text": "left-right",
+                "value": "left-right"
+              },
+              {
+                "text": "don't rotate",
+                "value": "don't rotate"
+              },
+              {
+                "text": "all around",
+                "value": "all around"
+              }
             ]
           }
         }
@@ -174,7 +249,10 @@
             "blockType": "COMMAND",
             "text": "say [MESSAGE]",
             "arguments": {
-              "MESSAGE": {"type": "STRING", "defaultValue": "Hello!"}
+              "MESSAGE": {
+                "type": "STRING",
+                "defaultValue": "Hello!"
+              }
             }
           },
           {
@@ -182,8 +260,14 @@
             "blockType": "COMMAND",
             "text": "say [MESSAGE] for [SECS] seconds",
             "arguments": {
-              "MESSAGE": {"type": "STRING", "defaultValue": "Hello!"},
-              "SECS": {"type": "NUMBER", "defaultValue": 2}
+              "MESSAGE": {
+                "type": "STRING",
+                "defaultValue": "Hello!"
+              },
+              "SECS": {
+                "type": "NUMBER",
+                "defaultValue": 2
+              }
             }
           },
           {
@@ -191,7 +275,10 @@
             "blockType": "COMMAND",
             "text": "think [MESSAGE]",
             "arguments": {
-              "MESSAGE": {"type": "STRING", "defaultValue": "Hmm..."}
+              "MESSAGE": {
+                "type": "STRING",
+                "defaultValue": "Hmm..."
+              }
             }
           },
           {
@@ -199,8 +286,14 @@
             "blockType": "COMMAND",
             "text": "think [MESSAGE] for [SECS] seconds",
             "arguments": {
-              "MESSAGE": {"type": "STRING", "defaultValue": "Hmm..."},
-              "SECS": {"type": "NUMBER", "defaultValue": 2}
+              "MESSAGE": {
+                "type": "STRING",
+                "defaultValue": "Hmm..."
+              },
+              "SECS": {
+                "type": "NUMBER",
+                "defaultValue": 2
+              }
             }
           },
           {
@@ -218,7 +311,10 @@
             "blockType": "COMMAND",
             "text": "switch costume to [COSTUME]",
             "arguments": {
-              "COSTUME": {"type": "STRING", "menu": "COSTUME_MENU"}
+              "COSTUME": {
+                "type": "STRING",
+                "menu": "COSTUME_MENU"
+              }
             }
           },
           {
@@ -226,7 +322,10 @@
             "blockType": "COMMAND",
             "text": "switch backdrop to [BACKDROP]",
             "arguments": {
-              "BACKDROP": {"type": "STRING", "menu": "BACKDROP_MENU"}
+              "BACKDROP": {
+                "type": "STRING",
+                "menu": "BACKDROP_MENU"
+              }
             }
           },
           {
@@ -234,7 +333,10 @@
             "blockType": "COMMAND",
             "text": "switch backdrop to [BACKDROP] and wait",
             "arguments": {
-              "BACKDROP": {"type": "STRING", "menu": "BACKDROP_MENU"}
+              "BACKDROP": {
+                "type": "STRING",
+                "menu": "BACKDROP_MENU"
+              }
             }
           },
           {
@@ -252,8 +354,14 @@
             "blockType": "COMMAND",
             "text": "change [EFFECT] effect by [CHANGE]",
             "arguments": {
-              "EFFECT": {"type": "STRING", "menu": "GRAPHIC_EFFECT_MENU"},
-              "CHANGE": {"type": "NUMBER", "defaultValue": 25}
+              "EFFECT": {
+                "type": "STRING",
+                "menu": "GRAPHIC_EFFECT_MENU"
+              },
+              "CHANGE": {
+                "type": "NUMBER",
+                "defaultValue": 25
+              }
             }
           },
           {
@@ -261,8 +369,14 @@
             "blockType": "COMMAND",
             "text": "set [EFFECT] effect to [VALUE]",
             "arguments": {
-              "EFFECT": {"type": "STRING", "menu": "GRAPHIC_EFFECT_MENU"},
-              "VALUE": {"type": "NUMBER", "defaultValue": 0}
+              "EFFECT": {
+                "type": "STRING",
+                "menu": "GRAPHIC_EFFECT_MENU"
+              },
+              "VALUE": {
+                "type": "NUMBER",
+                "defaultValue": 0
+              }
             }
           },
           {
@@ -275,7 +389,10 @@
             "blockType": "COMMAND",
             "text": "change size by [CHANGE]",
             "arguments": {
-              "CHANGE": {"type": "NUMBER", "defaultValue": 10}
+              "CHANGE": {
+                "type": "NUMBER",
+                "defaultValue": 10
+              }
             }
           },
           {
@@ -283,7 +400,10 @@
             "blockType": "COMMAND",
             "text": "set size to [SIZE] %",
             "arguments": {
-              "SIZE": {"type": "NUMBER", "defaultValue": 100}
+              "SIZE": {
+                "type": "NUMBER",
+                "defaultValue": 100
+              }
             }
           },
           {
@@ -291,7 +411,10 @@
             "blockType": "COMMAND",
             "text": "go to [FRONT_BACK] layer",
             "arguments": {
-              "FRONT_BACK": {"type": "STRING", "menu": "FRONT_BACK_MENU"}
+              "FRONT_BACK": {
+                "type": "STRING",
+                "menu": "FRONT_BACK_MENU"
+              }
             }
           },
           {
@@ -299,8 +422,14 @@
             "blockType": "COMMAND",
             "text": "go [FORWARD_BACKWARD] [NUM] layers",
             "arguments": {
-              "FORWARD_BACKWARD": {"type": "STRING", "menu": "FORWARD_BACKWARD_MENU"},
-              "NUM": {"type": "NUMBER", "defaultValue": 1}
+              "FORWARD_BACKWARD": {
+                "type": "STRING",
+                "menu": "FORWARD_BACKWARD_MENU"
+              },
+              "NUM": {
+                "type": "NUMBER",
+                "defaultValue": 1
+              }
             }
           },
           {
@@ -313,8 +442,14 @@
             "blockType": "REPORTER",
             "text": "[NUMBER_NAME] of costume [COSTUME]",
             "arguments": {
-              "NUMBER_NAME": {"type": "STRING", "menu": "NUMBER_NAME_MENU"},
-              "COSTUME": {"type": "STRING", "menu": "COSTUME_MENU"}
+              "NUMBER_NAME": {
+                "type": "STRING",
+                "menu": "NUMBER_NAME_MENU"
+              },
+              "COSTUME": {
+                "type": "STRING",
+                "menu": "COSTUME_MENU"
+              }
             }
           },
           {
@@ -322,8 +457,14 @@
             "blockType": "REPORTER",
             "text": "[NUMBER_NAME] of backdrop [BACKDROP]",
             "arguments": {
-              "NUMBER_NAME": {"type": "STRING", "menu": "NUMBER_NAME_MENU"},
-              "BACKDROP": {"type": "STRING", "menu": "BACKDROP_MENU"}
+              "NUMBER_NAME": {
+                "type": "STRING",
+                "menu": "NUMBER_NAME_MENU"
+              },
+              "BACKDROP": {
+                "type": "STRING",
+                "menu": "BACKDROP_MENU"
+              }
             }
           }
         ],
@@ -331,34 +472,73 @@
           "GRAPHIC_EFFECT_MENU": {
             "acceptReporters": false,
             "items": [
-              {"text": "color", "value": "color"},
-              {"text": "fisheye", "value": "fisheye"},
-              {"text": "whirl", "value": "whirl"},
-              {"text": "pixelate", "value": "pixelate"},
-              {"text": "mosaic", "value": "mosaic"},
-              {"text": "brightness", "value": "brightness"},
-              {"text": "ghost", "value": "ghost"}
+              {
+                "text": "color",
+                "value": "color"
+              },
+              {
+                "text": "fisheye",
+                "value": "fisheye"
+              },
+              {
+                "text": "whirl",
+                "value": "whirl"
+              },
+              {
+                "text": "pixelate",
+                "value": "pixelate"
+              },
+              {
+                "text": "mosaic",
+                "value": "mosaic"
+              },
+              {
+                "text": "brightness",
+                "value": "brightness"
+              },
+              {
+                "text": "ghost",
+                "value": "ghost"
+              }
             ]
           },
           "FRONT_BACK_MENU": {
             "acceptReporters": false,
             "items": [
-              {"text": "front", "value": "front"},
-              {"text": "back", "value": "back"}
+              {
+                "text": "front",
+                "value": "front"
+              },
+              {
+                "text": "back",
+                "value": "back"
+              }
             ]
           },
           "FORWARD_BACKWARD_MENU": {
             "acceptReporters": false,
             "items": [
-              {"text": "forward", "value": "forward"},
-              {"text": "backward", "value": "backward"}
+              {
+                "text": "forward",
+                "value": "forward"
+              },
+              {
+                "text": "backward",
+                "value": "backward"
+              }
             ]
           },
           "NUMBER_NAME_MENU": {
             "acceptReporters": false,
             "items": [
-              {"text": "number", "value": "number"},
-              {"text": "name", "value": "name"}
+              {
+                "text": "number",
+                "value": "number"
+              },
+              {
+                "text": "name",
+                "value": "name"
+              }
             ]
           },
           "COSTUME_MENU": {
@@ -378,7 +558,10 @@
             "blockType": "COMMAND",
             "text": "start sound [SOUND_MENU]",
             "arguments": {
-              "SOUND_MENU": {"type": "STRING", "menu": "SOUND_MENU"}
+              "SOUND_MENU": {
+                "type": "STRING",
+                "menu": "SOUND_MENU"
+              }
             }
           },
           {
@@ -386,7 +569,10 @@
             "blockType": "COMMAND",
             "text": "play sound [SOUND_MENU] until done",
             "arguments": {
-              "SOUND_MENU": {"type": "STRING", "menu": "SOUND_MENU"}
+              "SOUND_MENU": {
+                "type": "STRING",
+                "menu": "SOUND_MENU"
+              }
             }
           },
           {
@@ -399,8 +585,14 @@
             "blockType": "COMMAND",
             "text": "set [EFFECT] effect to [VALUE]",
             "arguments": {
-              "EFFECT": {"type": "STRING", "menu": "SOUND_EFFECTS_MENU"},
-              "VALUE": {"type": "NUMBER", "defaultValue": 100}
+              "EFFECT": {
+                "type": "STRING",
+                "menu": "SOUND_EFFECTS_MENU"
+              },
+              "VALUE": {
+                "type": "NUMBER",
+                "defaultValue": 100
+              }
             }
           },
           {
@@ -408,8 +600,14 @@
             "blockType": "COMMAND",
             "text": "change [EFFECT] effect by [VALUE]",
             "arguments": {
-              "EFFECT": {"type": "STRING", "menu": "SOUND_EFFECTS_MENU"},
-              "VALUE": {"type": "NUMBER", "defaultValue": 10}
+              "EFFECT": {
+                "type": "STRING",
+                "menu": "SOUND_EFFECTS_MENU"
+              },
+              "VALUE": {
+                "type": "NUMBER",
+                "defaultValue": 10
+              }
             }
           },
           {
@@ -422,7 +620,10 @@
             "blockType": "COMMAND",
             "text": "set volume to [VOLUME] %",
             "arguments": {
-              "VOLUME": {"type": "NUMBER", "defaultValue": 100}
+              "VOLUME": {
+                "type": "NUMBER",
+                "defaultValue": 100
+              }
             }
           },
           {
@@ -430,7 +631,10 @@
             "blockType": "COMMAND",
             "text": "change volume by [VOLUME]",
             "arguments": {
-              "VOLUME": {"type": "NUMBER", "defaultValue": -10}
+              "VOLUME": {
+                "type": "NUMBER",
+                "defaultValue": -10
+              }
             }
           },
           {
@@ -443,8 +647,14 @@
           "SOUND_EFFECTS_MENU": {
             "acceptReporters": false,
             "items": [
-              {"text": "pitch", "value": "pitch"},
-              {"text": "pan left/right", "value": "pan"}
+              {
+                "text": "pitch",
+                "value": "pitch"
+              },
+              {
+                "text": "pan left/right",
+                "value": "pan"
+              }
             ]
           }
         }
@@ -456,7 +666,10 @@
             "blockType": "COMMAND",
             "text": "wait [DURATION] seconds",
             "arguments": {
-              "DURATION": {"type": "NUMBER", "defaultValue": 1}
+              "DURATION": {
+                "type": "NUMBER",
+                "defaultValue": 1
+              }
             }
           },
           {
@@ -464,7 +677,10 @@
             "blockType": "COMMAND",
             "text": "repeat [TIMES] times",
             "arguments": {
-              "TIMES": {"type": "NUMBER", "defaultValue": 10}
+              "TIMES": {
+                "type": "NUMBER",
+                "defaultValue": 10
+              }
             }
           },
           {
@@ -507,7 +723,10 @@
             "blockType": "COMMAND",
             "text": "stop [STOP_OPTION]",
             "arguments": {
-              "STOP_OPTION": {"type": "STRING", "menu": "STOP_MENU"}
+              "STOP_OPTION": {
+                "type": "STRING",
+                "menu": "STOP_MENU"
+              }
             }
           },
           {
@@ -520,7 +739,10 @@
             "blockType": "COMMAND",
             "text": "create clone of [CLONE_OPTION]",
             "arguments": {
-              "CLONE_OPTION": {"type": "STRING", "menu": "CLONE_MENU"}
+              "CLONE_OPTION": {
+                "type": "STRING",
+                "menu": "CLONE_MENU"
+              }
             }
           },
           {
@@ -553,17 +775,32 @@
           "STOP_MENU": {
             "acceptReporters": false,
             "items": [
-              {"text": "all", "value": "all"},
-              {"text": "this script", "value": "this script"},
-              {"text": "other scripts in sprite", "value": "other scripts in sprite"},
-              {"text": "other scripts in stage", "value": "other scripts in stage"}
+              {
+                "text": "all",
+                "value": "all"
+              },
+              {
+                "text": "this script",
+                "value": "this script"
+              },
+              {
+                "text": "other scripts in sprite",
+                "value": "other scripts in sprite"
+              },
+              {
+                "text": "other scripts in stage",
+                "value": "other scripts in stage"
+              }
             ]
           },
           "CLONE_MENU": {
             "acceptReporters": true,
             "isDynamic": true,
             "items": [
-              {"text": "_myself_", "value": "_myself_"}
+              {
+                "text": "_myself_",
+                "value": "_myself_"
+              }
             ]
           }
         }
@@ -580,7 +817,11 @@
             "blockType": "HAT",
             "text": "when [KEY_OPTION] key pressed",
             "arguments": {
-              "KEY_OPTION": {"type": "STRING", "menu": "KEY_OPTION_MENU", "defaultValue": "space"}
+              "KEY_OPTION": {
+                "type": "STRING",
+                "menu": "KEY_OPTION_MENU",
+                "defaultValue": "space"
+              }
             }
           },
           {
@@ -598,7 +839,10 @@
             "blockType": "HAT",
             "text": "when this sprite touches [TOUCHINGOBJECTMENU]",
             "arguments": {
-              "TOUCHINGOBJECTMENU": {"type": "STRING", "menu": "TOUCHING_OBJECT_MENU"}
+              "TOUCHINGOBJECTMENU": {
+                "type": "STRING",
+                "menu": "TOUCHING_OBJECT_MENU"
+              }
             }
           },
           {
@@ -606,7 +850,10 @@
             "blockType": "HAT",
             "text": "when backdrop switches to [BACKDROP]",
             "arguments": {
-              "BACKDROP": {"type": "STRING", "menu": "BACKDROP_MENU"}
+              "BACKDROP": {
+                "type": "STRING",
+                "menu": "BACKDROP_MENU"
+              }
             }
           },
           {
@@ -614,8 +861,15 @@
             "blockType": "HAT",
             "text": "when [WHENGREATERTHANMENU] > [VALUE]",
             "arguments": {
-              "WHENGREATERTHANMENU": {"type": "STRING", "menu": "WHENGREATERTHANMENU", "defaultValue": "loudness"},
-              "VALUE": {"type": "NUMBER", "defaultValue": 10}
+              "WHENGREATERTHANMENU": {
+                "type": "STRING",
+                "menu": "WHENGREATERTHANMENU",
+                "defaultValue": "loudness"
+              },
+              "VALUE": {
+                "type": "NUMBER",
+                "defaultValue": 10
+              }
             }
           },
           {
@@ -623,7 +877,10 @@
             "blockType": "HAT",
             "text": "when I receive [BROADCAST_OPTION]",
             "arguments": {
-              "BROADCAST_OPTION": {"type": "STRING", "menu": "BROADCAST_MENU"}
+              "BROADCAST_OPTION": {
+                "type": "STRING",
+                "menu": "BROADCAST_MENU"
+              }
             }
           },
           {
@@ -631,7 +888,10 @@
             "blockType": "COMMAND",
             "text": "broadcast [BROADCAST_OPTION]",
             "arguments": {
-              "BROADCAST_OPTION": {"type": "STRING", "menu": "BROADCAST_MENU"}
+              "BROADCAST_OPTION": {
+                "type": "STRING",
+                "menu": "BROADCAST_MENU"
+              }
             }
           },
           {
@@ -639,7 +899,10 @@
             "blockType": "COMMAND",
             "text": "broadcast [BROADCAST_OPTION] and wait",
             "arguments": {
-              "BROADCAST_OPTION": {"type": "STRING", "menu": "BROADCAST_MENU"}
+              "BROADCAST_OPTION": {
+                "type": "STRING",
+                "menu": "BROADCAST_MENU"
+              }
             }
           }
         ],
@@ -647,27 +910,57 @@
           "KEY_OPTION_MENU": {
             "acceptReporters": false,
             "items": [
-              {"text": "space", "value": "space"},
-              {"text": "left arrow", "value": "left arrow"},
-              {"text": "right arrow", "value": "right arrow"},
-              {"text": "down arrow", "value": "down arrow"},
-              {"text": "up arrow", "value": "up arrow"},
-              {"text": "any", "value": "any"}
+              {
+                "text": "space",
+                "value": "space"
+              },
+              {
+                "text": "left arrow",
+                "value": "left arrow"
+              },
+              {
+                "text": "right arrow",
+                "value": "right arrow"
+              },
+              {
+                "text": "down arrow",
+                "value": "down arrow"
+              },
+              {
+                "text": "up arrow",
+                "value": "up arrow"
+              },
+              {
+                "text": "any",
+                "value": "any"
+              }
             ]
           },
           "WHENGREATERTHANMENU": {
             "acceptReporters": false,
             "items": [
-              {"text": "loudness", "value": "loudness"},
-              {"text": "timer", "value": "timer"}
+              {
+                "text": "loudness",
+                "value": "loudness"
+              },
+              {
+                "text": "timer",
+                "value": "timer"
+              }
             ]
           },
           "TOUCHING_OBJECT_MENU": {
-            "acceptReporters": true,
+            "acceptReporters": false,
             "isDynamic": true,
             "items": [
-              {"text": "_mouse_", "value": "_mouse_"},
-              {"text": "_edge_", "value": "_edge_"}
+              {
+                "text": "_mouse_",
+                "value": "_mouse_"
+              },
+              {
+                "text": "_edge_",
+                "value": "_edge_"
+              }
             ]
           },
           "BROADCAST_MENU": {
@@ -683,7 +976,10 @@
             "blockType": "BOOLEAN",
             "text": "touching [TOUCHINGOBJECTMENU]?",
             "arguments": {
-              "TOUCHINGOBJECTMENU": {"type": "STRING", "menu": "TOUCHING_OBJECT_MENU"}
+              "TOUCHINGOBJECTMENU": {
+                "type": "STRING",
+                "menu": "TOUCHING_OBJECT_MENU"
+              }
             }
           },
           {
@@ -701,7 +997,10 @@
             "blockType": "REPORTER",
             "text": "distance to [DISTANCETOMENU]",
             "arguments": {
-              "DISTANCETOMENU": {"type": "STRING", "menu": "DISTANCETOMENU"}
+              "DISTANCETOMENU": {
+                "type": "STRING",
+                "menu": "DISTANCETOMENU"
+              }
             }
           },
           {
@@ -719,8 +1018,14 @@
             "blockType": "REPORTER",
             "text": "[PROPERTY] of [OBJECT]",
             "arguments": {
-              "PROPERTY": {"type": "STRING", "menu": "PROPERTY_MENU"},
-              "OBJECT": {"type": "STRING", "menu": "OBJECT_MENU"}
+              "PROPERTY": {
+                "type": "STRING",
+                "menu": "PROPERTY_MENU"
+              },
+              "OBJECT": {
+                "type": "STRING",
+                "menu": "OBJECT_MENU"
+              }
             }
           },
           {
@@ -738,7 +1043,10 @@
             "blockType": "COMMAND",
             "text": "set drag mode to [DRAG_MODE]",
             "arguments": {
-              "DRAG_MODE": {"type": "STRING", "menu": "DRAG_MODE_MENU"}
+              "DRAG_MODE": {
+                "type": "STRING",
+                "menu": "DRAG_MODE_MENU"
+              }
             }
           },
           {
@@ -751,7 +1059,10 @@
             "blockType": "BOOLEAN",
             "text": "key [KEY_OPTION] pressed?",
             "arguments": {
-              "KEY_OPTION": {"type": "STRING", "menu": "KEY_OPTION_MENU"}
+              "KEY_OPTION": {
+                "type": "STRING",
+                "menu": "KEY_OPTION_MENU"
+              }
             }
           },
           {
@@ -759,7 +1070,10 @@
             "blockType": "REPORTER",
             "text": "current [CURRENTMENU]",
             "arguments": {
-              "CURRENTMENU": {"type": "STRING", "menu": "CURRENTMENU"}
+              "CURRENTMENU": {
+                "type": "STRING",
+                "menu": "CURRENTMENU"
+              }
             }
           },
           {
@@ -782,7 +1096,10 @@
             "blockType": "COMMAND",
             "text": "ask [QUESTION] and wait",
             "arguments": {
-              "QUESTION": {"type": "STRING", "defaultValue": "What's your name?"}
+              "QUESTION": {
+                "type": "STRING",
+                "defaultValue": "What's your name?"
+              }
             }
           },
           {
@@ -800,65 +1117,146 @@
           "TOUCHING_OBJECT_MENU": {
             "acceptReporters": true,
             "items": [
-              {"text": "_mouse_", "value": "_mouse_"},
-              {"text": "_edge_", "value": "_edge_"}
+              {
+                "text": "_mouse_",
+                "value": "_mouse_"
+              },
+              {
+                "text": "_edge_",
+                "value": "_edge_"
+              }
             ]
           },
           "DISTANCETOMENU": {
             "acceptReporters": true,
             "isDynamic": true,
             "items": [
-              {"text": "_mouse_", "value": "_mouse_"}
+              {
+                "text": "_mouse_",
+                "value": "_mouse_"
+              }
             ]
           },
           "OBJECT_MENU": {
             "acceptReporters": true,
             "isDynamic": true,
             "items": [
-              {"text": "Stage", "value": "_stage_"}
+              {
+                "text": "Stage",
+                "value": "_stage_"
+              }
             ]
           },
           "PROPERTY_MENU": {
-            "acceptReporters": true,
+            "acceptReporters": false,
             "items": [
-              {"text": "x position", "value": "x position"},
-              {"text": "y position", "value": "y position"},
-              {"text": "direction", "value": "direction"},
-              {"text": "costume #", "value": "costume #"},
-              {"text": "costume name", "value": "costume name"},
-              {"text": "size", "value": "size"},
-              {"text": "volume", "value": "volume"},
-              {"text": "backdrop #", "value": "backdrop #"},
-              {"text": "backdrop name", "value": "backdrop name"}
+              {
+                "text": "x position",
+                "value": "x position"
+              },
+              {
+                "text": "y position",
+                "value": "y position"
+              },
+              {
+                "text": "direction",
+                "value": "direction"
+              },
+              {
+                "text": "costume #",
+                "value": "costume #"
+              },
+              {
+                "text": "costume name",
+                "value": "costume name"
+              },
+              {
+                "text": "size",
+                "value": "size"
+              },
+              {
+                "text": "volume",
+                "value": "volume"
+              },
+              {
+                "text": "backdrop #",
+                "value": "backdrop #"
+              },
+              {
+                "text": "backdrop name",
+                "value": "backdrop name"
+              }
             ]
           },
           "DRAG_MODE_MENU": {
             "acceptReporters": false,
             "items": [
-              {"text": "draggable", "value": "draggable"},
-              {"text": "not draggable", "value": "not draggable"}
+              {
+                "text": "draggable",
+                "value": "draggable"
+              },
+              {
+                "text": "not draggable",
+                "value": "not draggable"
+              }
             ]
           },
           "CURRENTMENU": {
             "acceptReporters": false,
             "items": [
-              {"text": "year", "value": "year"},
-              {"text": "month", "value": "month"},
-              {"text": "date", "value": "date"},
-              {"text": "day of week", "value": "dayofweek"},
-              {"text": "hour", "value": "hour"},
-              {"text": "minute", "value": "minute"},
-              {"text": "second", "value": "second"}
+              {
+                "text": "year",
+                "value": "year"
+              },
+              {
+                "text": "month",
+                "value": "month"
+              },
+              {
+                "text": "date",
+                "value": "date"
+              },
+              {
+                "text": "day of week",
+                "value": "dayofweek"
+              },
+              {
+                "text": "hour",
+                "value": "hour"
+              },
+              {
+                "text": "minute",
+                "value": "minute"
+              },
+              {
+                "text": "second",
+                "value": "second"
+              }
             ]
           },
           "KEY_OPTION_MENU": {
-            "acceptReporters": false,
+            "acceptReporters": true,
             "items": [
-              {"text": "space", "value": "space"},
-              {"text": "left arrow", "value": "left arrow"},
-              {"text": "right arrow", "value": "right arrow"},
-              {"text": "down arrow", "value": "down arrow"},
-              {"text": "up arrow", "value": "up arrow"}
+              {
+                "text": "space",
+                "value": "space"
+              },
+              {
+                "text": "left arrow",
+                "value": "left arrow"
+              },
+              {
+                "text": "right arrow",
+                "value": "right arrow"
+              },
+              {
+                "text": "down arrow",
+                "value": "down arrow"
+              },
+              {
+                "text": "up arrow",
+                "value": "up arrow"
+              }
             ]
           }
         }
@@ -870,8 +1268,14 @@
             "blockType": "REPORTER",
             "text": "([NUM1] + [NUM2])",
             "arguments": {
-              "NUM1": {"type": "NUMBER", "defaultValue": ""},
-              "NUM2": {"type": "NUMBER", "defaultValue": ""}
+              "NUM1": {
+                "type": "NUMBER",
+                "defaultValue": ""
+              },
+              "NUM2": {
+                "type": "NUMBER",
+                "defaultValue": ""
+              }
             }
           },
           {
@@ -879,8 +1283,14 @@
             "blockType": "REPORTER",
             "text": "([NUM1] - [NUM2])",
             "arguments": {
-              "NUM1": {"type": "NUMBER", "defaultValue": ""},
-              "NUM2": {"type": "NUMBER", "defaultValue": ""}
+              "NUM1": {
+                "type": "NUMBER",
+                "defaultValue": ""
+              },
+              "NUM2": {
+                "type": "NUMBER",
+                "defaultValue": ""
+              }
             }
           },
           {
@@ -888,8 +1298,14 @@
             "blockType": "REPORTER",
             "text": "([NUM1] * [NUM2])",
             "arguments": {
-              "NUM1": {"type": "NUMBER", "defaultValue": ""},
-              "NUM2": {"type": "NUMBER", "defaultValue": ""}
+              "NUM1": {
+                "type": "NUMBER",
+                "defaultValue": ""
+              },
+              "NUM2": {
+                "type": "NUMBER",
+                "defaultValue": ""
+              }
             }
           },
           {
@@ -897,8 +1313,14 @@
             "blockType": "REPORTER",
             "text": "([NUM1] / [NUM2])",
             "arguments": {
-              "NUM1": {"type": "NUMBER", "defaultValue": ""},
-              "NUM2": {"type": "NUMBER", "defaultValue": ""}
+              "NUM1": {
+                "type": "NUMBER",
+                "defaultValue": ""
+              },
+              "NUM2": {
+                "type": "NUMBER",
+                "defaultValue": ""
+              }
             }
           },
           {
@@ -906,8 +1328,14 @@
             "blockType": "REPORTER",
             "text": "pick random [FROM] to [TO]",
             "arguments": {
-              "FROM": {"type": "NUMBER", "defaultValue": 1},
-              "TO": {"type": "NUMBER", "defaultValue": 10}
+              "FROM": {
+                "type": "NUMBER",
+                "defaultValue": 1
+              },
+              "TO": {
+                "type": "NUMBER",
+                "defaultValue": 10
+              }
             }
           },
           {
@@ -915,8 +1343,14 @@
             "blockType": "BOOLEAN",
             "text": "<[OPERAND1] < [OPERAND2]>",
             "arguments": {
-              "OPERAND1": {"type": "STRING", "defaultValue": ""},
-              "OPERAND2": {"type": "STRING", "defaultValue": ""}
+              "OPERAND1": {
+                "type": "STRING",
+                "defaultValue": ""
+              },
+              "OPERAND2": {
+                "type": "STRING",
+                "defaultValue": ""
+              }
             }
           },
           {
@@ -924,8 +1358,14 @@
             "blockType": "BOOLEAN",
             "text": "<[OPERAND1] = [OPERAND2]>",
             "arguments": {
-              "OPERAND1": {"type": "STRING", "defaultValue": ""},
-              "OPERAND2": {"type": "STRING", "defaultValue": ""}
+              "OPERAND1": {
+                "type": "STRING",
+                "defaultValue": ""
+              },
+              "OPERAND2": {
+                "type": "STRING",
+                "defaultValue": ""
+              }
             }
           },
           {
@@ -933,8 +1373,14 @@
             "blockType": "BOOLEAN",
             "text": "<[OPERAND1] > [OPERAND2]>",
             "arguments": {
-              "OPERAND1": {"type": "STRING", "defaultValue": ""},
-              "OPERAND2": {"type": "STRING", "defaultValue": ""}
+              "OPERAND1": {
+                "type": "STRING",
+                "defaultValue": ""
+              },
+              "OPERAND2": {
+                "type": "STRING",
+                "defaultValue": ""
+              }
             }
           },
           {
@@ -942,8 +1388,14 @@
             "blockType": "BOOLEAN",
             "text": "<[OPERAND1] and [OPERAND2]>",
             "arguments": {
-              "OPERAND1": {"type": "BOOLEAN", "defaultValue": ""},
-              "OPERAND2": {"type": "BOOLEAN", "defaultValue": ""}
+              "OPERAND1": {
+                "type": "BOOLEAN",
+                "defaultValue": ""
+              },
+              "OPERAND2": {
+                "type": "BOOLEAN",
+                "defaultValue": ""
+              }
             }
           },
           {
@@ -951,8 +1403,14 @@
             "blockType": "BOOLEAN",
             "text": "<[OPERAND1] or [OPERAND2]>",
             "arguments": {
-              "OPERAND1": {"type": "BOOLEAN", "defaultValue": ""},
-              "OPERAND2": {"type": "BOOLEAN", "defaultValue": ""}
+              "OPERAND1": {
+                "type": "BOOLEAN",
+                "defaultValue": ""
+              },
+              "OPERAND2": {
+                "type": "BOOLEAN",
+                "defaultValue": ""
+              }
             }
           },
           {
@@ -960,7 +1418,10 @@
             "blockType": "BOOLEAN",
             "text": "<not [OPERAND]>",
             "arguments": {
-              "OPERAND": {"type": "BOOLEAN", "defaultValue": ""}
+              "OPERAND": {
+                "type": "BOOLEAN",
+                "defaultValue": ""
+              }
             }
           },
           {
@@ -968,8 +1429,14 @@
             "blockType": "REPORTER",
             "text": "join [STRING1] [STRING2]",
             "arguments": {
-              "STRING1": {"type": "STRING", "defaultValue": "hello"},
-              "STRING2": {"type": "STRING", "defaultValue": "world"}
+              "STRING1": {
+                "type": "STRING",
+                "defaultValue": "hello"
+              },
+              "STRING2": {
+                "type": "STRING",
+                "defaultValue": "world"
+              }
             }
           },
           {
@@ -977,8 +1444,14 @@
             "blockType": "REPORTER",
             "text": "letter [LETTER] of [STRING]",
             "arguments": {
-              "LETTER": {"type": "NUMBER", "defaultValue": 1},
-              "STRING": {"type": "STRING", "defaultValue": "world"}
+              "LETTER": {
+                "type": "NUMBER",
+                "defaultValue": 1
+              },
+              "STRING": {
+                "type": "STRING",
+                "defaultValue": "world"
+              }
             }
           },
           {
@@ -986,7 +1459,10 @@
             "blockType": "REPORTER",
             "text": "length of [STRING]",
             "arguments": {
-              "STRING": {"type": "STRING", "defaultValue": "world"}
+              "STRING": {
+                "type": "STRING",
+                "defaultValue": "world"
+              }
             }
           },
           {
@@ -994,8 +1470,14 @@
             "blockType": "BOOLEAN",
             "text": "<[STRING1] contains [STRING2]>",
             "arguments": {
-              "STRING1": {"type": "STRING", "defaultValue": "world"},
-              "STRING2": {"type": "STRING", "defaultValue": "or"}
+              "STRING1": {
+                "type": "STRING",
+                "defaultValue": "world"
+              },
+              "STRING2": {
+                "type": "STRING",
+                "defaultValue": "or"
+              }
             }
           },
           {
@@ -1003,8 +1485,14 @@
             "blockType": "REPORTER",
             "text": "([NUM1] mod [NUM2])",
             "arguments": {
-              "NUM1": {"type": "NUMBER", "defaultValue": ""},
-              "NUM2": {"type": "NUMBER", "defaultValue": ""}
+              "NUM1": {
+                "type": "NUMBER",
+                "defaultValue": ""
+              },
+              "NUM2": {
+                "type": "NUMBER",
+                "defaultValue": ""
+              }
             }
           },
           {
@@ -1012,7 +1500,10 @@
             "blockType": "REPORTER",
             "text": "round [NUM]",
             "arguments": {
-              "NUM": {"type": "NUMBER", "defaultValue": ""}
+              "NUM": {
+                "type": "NUMBER",
+                "defaultValue": ""
+              }
             }
           },
           {
@@ -1020,8 +1511,15 @@
             "blockType": "REPORTER",
             "text": "([OPERATOR] of [NUM])",
             "arguments": {
-              "OPERATOR": {"type": "STRING", "menu": "OPERATOR_MENU", "defaultValue": "sqrt"},
-              "NUM": {"type": "NUMBER", "defaultValue": ""}
+              "OPERATOR": {
+                "type": "STRING",
+                "menu": "OPERATOR_MENU",
+                "defaultValue": "sqrt"
+              },
+              "NUM": {
+                "type": "NUMBER",
+                "defaultValue": ""
+              }
             }
           }
         ],
@@ -1029,20 +1527,62 @@
           "OPERATOR_MENU": {
             "acceptReporters": false,
             "items": [
-              {"text": "abs", "value": "abs"},
-              {"text": "floor", "value": "floor"},
-              {"text": "ceiling", "value": "ceiling"},
-              {"text": "sqrt", "value": "sqrt"},
-              {"text": "sin", "value": "sin"},
-              {"text": "cos", "value": "cos"},
-              {"text": "tan", "value": "tan"},
-              {"text": "asin", "value": "asin"},
-              {"text": "acos", "value": "acos"},
-              {"text": "atan", "value": "atan"},
-              {"text": "ln", "value": "ln"},
-              {"text": "log", "value": "log"},
-              {"text": "e ^", "value": "e ^"},
-              {"text": "10 ^", "value": "10 ^"}
+              {
+                "text": "abs",
+                "value": "abs"
+              },
+              {
+                "text": "floor",
+                "value": "floor"
+              },
+              {
+                "text": "ceiling",
+                "value": "ceiling"
+              },
+              {
+                "text": "sqrt",
+                "value": "sqrt"
+              },
+              {
+                "text": "sin",
+                "value": "sin"
+              },
+              {
+                "text": "cos",
+                "value": "cos"
+              },
+              {
+                "text": "tan",
+                "value": "tan"
+              },
+              {
+                "text": "asin",
+                "value": "asin"
+              },
+              {
+                "text": "acos",
+                "value": "acos"
+              },
+              {
+                "text": "atan",
+                "value": "atan"
+              },
+              {
+                "text": "ln",
+                "value": "ln"
+              },
+              {
+                "text": "log",
+                "value": "log"
+              },
+              {
+                "text": "e ^",
+                "value": "e ^"
+              },
+              {
+                "text": "10 ^",
+                "value": "10 ^"
+              }
             ]
           }
         }
@@ -1169,8 +1709,15 @@
             "blockType": "COMMAND",
             "text": "play drum [DRUM] for [BEATS] beats",
             "arguments": {
-              "DRUM": {"type": "NUMBER", "menu": "DRUM", "defaultValue": 1},
-              "BEATS": {"type": "NUMBER", "defaultValue": 0.25}
+              "DRUM": {
+                "type": "NUMBER",
+                "menu": "DRUM",
+                "defaultValue": 1
+              },
+              "BEATS": {
+                "type": "NUMBER",
+                "defaultValue": 0.25
+              }
             }
           },
           {
@@ -1178,7 +1725,10 @@
             "blockType": "COMMAND",
             "text": "rest for [BEATS] beats",
             "arguments": {
-              "BEATS": {"type": "NUMBER", "defaultValue": 0.25}
+              "BEATS": {
+                "type": "NUMBER",
+                "defaultValue": 0.25
+              }
             }
           },
           {
@@ -1186,8 +1736,14 @@
             "blockType": "COMMAND",
             "text": "play note [NOTE] for [BEATS] beats",
             "arguments": {
-              "NOTE": {"type": "NOTE", "defaultValue": 60},
-              "BEATS": {"type": "NUMBER", "defaultValue": 0.25}
+              "NOTE": {
+                "type": "NOTE",
+                "defaultValue": 60
+              },
+              "BEATS": {
+                "type": "NUMBER",
+                "defaultValue": 0.25
+              }
             }
           },
           {
@@ -1195,7 +1751,11 @@
             "blockType": "COMMAND",
             "text": "set instrument to [INSTRUMENT]",
             "arguments": {
-              "INSTRUMENT": {"type": "NUMBER", "menu": "INSTRUMENT", "defaultValue": 1}
+              "INSTRUMENT": {
+                "type": "NUMBER",
+                "menu": "INSTRUMENT",
+                "defaultValue": 1
+              }
             }
           },
           {
@@ -1203,7 +1763,10 @@
             "blockType": "COMMAND",
             "text": "set tempo to [TEMPO]",
             "arguments": {
-              "TEMPO": {"type": "NUMBER", "defaultValue": 60}
+              "TEMPO": {
+                "type": "NUMBER",
+                "defaultValue": 60
+              }
             }
           },
           {
@@ -1211,7 +1774,10 @@
             "blockType": "COMMAND",
             "text": "change tempo by [TEMPO]",
             "arguments": {
-              "TEMPO": {"type": "NUMBER", "defaultValue": 20}
+              "TEMPO": {
+                "type": "NUMBER",
+                "defaultValue": 20
+              }
             }
           },
           {
@@ -1224,49 +1790,163 @@
           "DRUM": {
             "acceptReporters": true,
             "items": [
-              {"text": "(1) Snare Drum", "value": "1"},
-              {"text": "(2) Bass Drum", "value": "2"},
-              {"text": "(3) Side Stick", "value": "3"},
-              {"text": "(4) Crash Cymbal", "value": "4"},
-              {"text": "(5) Open Hi-Hat", "value": "5"},
-              {"text": "(6) Closed Hi-Hat", "value": "6"},
-              {"text": "(7) Tambourine", "value": "7"},
-              {"text": "(8) Hand Clap", "value": "8"},
-              {"text": "(9) Claves", "value": "9"},
-              {"text": "(10) Wood Block", "value": "10"},
-              {"text": "(11) Cowbell", "value": "11"},
-              {"text": "(12) Triangle", "value": "12"},
-              {"text": "(13) Bongo", "value": "13"},
-              {"text": "(14) Conga", "value": "14"},
-              {"text": "(15) Cabasa", "value": "15"},
-              {"text": "(16) Guiro", "value": "16"},
-              {"text": "(17) Vibraslap", "value": "17"},
-              {"text": "(18) Cuica", "value": "18"}
+              {
+                "text": "(1) Snare Drum",
+                "value": "1"
+              },
+              {
+                "text": "(2) Bass Drum",
+                "value": "2"
+              },
+              {
+                "text": "(3) Side Stick",
+                "value": "3"
+              },
+              {
+                "text": "(4) Crash Cymbal",
+                "value": "4"
+              },
+              {
+                "text": "(5) Open Hi-Hat",
+                "value": "5"
+              },
+              {
+                "text": "(6) Closed Hi-Hat",
+                "value": "6"
+              },
+              {
+                "text": "(7) Tambourine",
+                "value": "7"
+              },
+              {
+                "text": "(8) Hand Clap",
+                "value": "8"
+              },
+              {
+                "text": "(9) Claves",
+                "value": "9"
+              },
+              {
+                "text": "(10) Wood Block",
+                "value": "10"
+              },
+              {
+                "text": "(11) Cowbell",
+                "value": "11"
+              },
+              {
+                "text": "(12) Triangle",
+                "value": "12"
+              },
+              {
+                "text": "(13) Bongo",
+                "value": "13"
+              },
+              {
+                "text": "(14) Conga",
+                "value": "14"
+              },
+              {
+                "text": "(15) Cabasa",
+                "value": "15"
+              },
+              {
+                "text": "(16) Guiro",
+                "value": "16"
+              },
+              {
+                "text": "(17) Vibraslap",
+                "value": "17"
+              },
+              {
+                "text": "(18) Cuica",
+                "value": "18"
+              }
             ]
           },
           "INSTRUMENT": {
             "acceptReporters": true,
             "items": [
-              {"text": "(1) Piano", "value": "1"},
-              {"text": "(2) Electric Piano", "value": "2"},
-              {"text": "(3) Organ", "value": "3"},
-              {"text": "(4) Guitar", "value": "4"},
-              {"text": "(5) Electric Guitar", "value": "5"},
-              {"text": "(6) Bass", "value": "6"},
-              {"text": "(7) Pizzicato", "value": "7"},
-              {"text": "(8) Cello", "value": "8"},
-              {"text": "(9) Banjo", "value": "9"},
-              {"text": "(10) Mandolin", "value": "10"},
-              {"text": "(11) Trombone", "value": "11"},
-              {"text": "(12) Clarinet", "value": "12"},
-              {"text": "(13) Saxophone", "value": "13"},
-              {"text": "(14) Trumpet", "value": "14"},
-              {"text": "(15) Ring Organ", "value": "15"},
-              {"text": "(16) Music Box", "value": "16"},
-              {"text": "(17) Steel Drum", "value": "17"},
-              {"text": "(18) Marimba", "value": "18"},
-              {"text": "(19) Chimes", "value": "19"},
-              {"text": "(20) Bell Kit", "value": "20"}
+              {
+                "text": "(1) Piano",
+                "value": "1"
+              },
+              {
+                "text": "(2) Electric Piano",
+                "value": "2"
+              },
+              {
+                "text": "(3) Organ",
+                "value": "3"
+              },
+              {
+                "text": "(4) Guitar",
+                "value": "4"
+              },
+              {
+                "text": "(5) Electric Guitar",
+                "value": "5"
+              },
+              {
+                "text": "(6) Bass",
+                "value": "6"
+              },
+              {
+                "text": "(7) Pizzicato",
+                "value": "7"
+              },
+              {
+                "text": "(8) Cello",
+                "value": "8"
+              },
+              {
+                "text": "(9) Banjo",
+                "value": "9"
+              },
+              {
+                "text": "(10) Mandolin",
+                "value": "10"
+              },
+              {
+                "text": "(11) Trombone",
+                "value": "11"
+              },
+              {
+                "text": "(12) Clarinet",
+                "value": "12"
+              },
+              {
+                "text": "(13) Saxophone",
+                "value": "13"
+              },
+              {
+                "text": "(14) Trumpet",
+                "value": "14"
+              },
+              {
+                "text": "(15) Ring Organ",
+                "value": "15"
+              },
+              {
+                "text": "(16) Music Box",
+                "value": "16"
+              },
+              {
+                "text": "(17) Steel Drum",
+                "value": "17"
+              },
+              {
+                "text": "(18) Marimba",
+                "value": "18"
+              },
+              {
+                "text": "(19) Chimes",
+                "value": "19"
+              },
+              {
+                "text": "(20) Bell Kit",
+                "value": "20"
+              }
             ]
           }
         }
@@ -1323,10 +2003,22 @@
           "colorParam": {
             "acceptReporters": true,
             "items": [
-              {"text": "color", "value": "color"},
-              {"text": "saturation", "value": "saturation"},
-              {"text": "brightness", "value": "brightness"},
-              {"text": "transparency", "value": "transparency"}
+              {
+                "text": "color",
+                "value": "color"
+              },
+              {
+                "text": "saturation",
+                "value": "saturation"
+              },
+              {
+                "text": "brightness",
+                "value": "brightness"
+              },
+              {
+                "text": "transparency",
+                "value": "transparency"
+              }
             ]
           }
         }
@@ -1338,8 +2030,14 @@
             "blockType": "COMMAND",
             "text": "turn [MOTION_MENU] video [STATE_MENU]",
             "arguments": {
-              "MOTION_MENU": {"type": "STRING", "menu": "MOTION_MENU"},
-              "STATE_MENU": {"type": "STRING", "menu": "STATE_MENU"}
+              "MOTION_MENU": {
+                "type": "STRING",
+                "menu": "MOTION_MENU"
+              },
+              "STATE_MENU": {
+                "type": "STRING",
+                "menu": "STATE_MENU"
+              }
             }
           },
           {
@@ -1347,7 +2045,10 @@
             "blockType": "COMMAND",
             "text": "set video transparency to [TRANSPARENCY] %",
             "arguments": {
-              "TRANSPARENCY": {"type": "NUMBER", "defaultValue": 50}
+              "TRANSPARENCY": {
+                "type": "NUMBER",
+                "defaultValue": 50
+              }
             }
           },
           {
@@ -1365,8 +2066,14 @@
             "blockType": "REPORTER",
             "text": "[ATTRIBUTE] of [SUBJECT]",
             "arguments": {
-              "ATTRIBUTE": {"type": "STRING", "menu": "ATTRIBUTE"},
-              "SUBJECT": {"type": "STRING", "menu": "SUBJECT"}
+              "ATTRIBUTE": {
+                "type": "STRING",
+                "menu": "ATTRIBUTE"
+              },
+              "SUBJECT": {
+                "type": "STRING",
+                "menu": "SUBJECT"
+              }
             }
           }
         ],
@@ -1374,30 +2081,57 @@
           "MOTION_MENU": {
             "acceptReporters": false,
             "items": [
-              {"text": "motion", "value": "motion"},
-              {"text": "direction", "value": "direction"}
+              {
+                "text": "motion",
+                "value": "motion"
+              },
+              {
+                "text": "direction",
+                "value": "direction"
+              }
             ]
           },
           "STATE_MENU": {
-            "acceptReporters": false,
+            "acceptReporters": true,
             "items": [
-              {"text": "on", "value": "on"},
-              {"text": "off", "value": "off"},
-              {"text": "on-flipped", "value": "on-flipped"}
+              {
+                "text": "on",
+                "value": "on"
+              },
+              {
+                "text": "off",
+                "value": "off"
+              },
+              {
+                "text": "on-flipped",
+                "value": "on-flipped"
+              }
             ]
           },
           "ATTRIBUTE": {
             "acceptReporters": true,
             "items": [
-              {"text": "motion", "value": "motion"},
-              {"text": "direction", "value": "direction"}
+              {
+                "text": "motion",
+                "value": "motion"
+              },
+              {
+                "text": "direction",
+                "value": "direction"
+              }
             ]
           },
           "SUBJECT": {
             "acceptReporters": true,
             "items": [
-              {"text": "stage", "value": "stage"},
-              {"text": "this sprite", "value": "this sprite"}
+              {
+                "text": "stage",
+                "value": "stage"
+              },
+              {
+                "text": "this sprite",
+                "value": "this sprite"
+              }
             ]
           }
         }
@@ -1409,7 +2143,10 @@
             "blockType": "COMMAND",
             "text": "speak [WORDS]",
             "arguments": {
-              "WORDS": {"type": "STRING", "defaultValue": "hello"}
+              "WORDS": {
+                "type": "STRING",
+                "defaultValue": "hello"
+              }
             }
           },
           {
@@ -1417,7 +2154,10 @@
             "blockType": "COMMAND",
             "text": "set voice to [VOICE]",
             "arguments": {
-              "VOICE": {"type": "STRING", "menu": "voices"}
+              "VOICE": {
+                "type": "STRING",
+                "menu": "voices"
+              }
             }
           },
           {
@@ -1425,7 +2165,10 @@
             "blockType": "COMMAND",
             "text": "set language to [LANGUAGE]",
             "arguments": {
-              "LANGUAGE": {"type": "STRING", "menu": "languages"}
+              "LANGUAGE": {
+                "type": "STRING",
+                "menu": "languages"
+              }
             }
           }
         ],
@@ -1445,8 +2188,14 @@
             "blockType": "REPORTER",
             "text": "translate [WORDS] to [LANGUAGE]",
             "arguments": {
-              "WORDS": {"type": "STRING", "defaultValue": "hello"},
-              "LANGUAGE": {"type": "STRING", "menu": "languages"}
+              "WORDS": {
+                "type": "STRING",
+                "defaultValue": "hello"
+              },
+              "LANGUAGE": {
+                "type": "STRING",
+                "menu": "languages"
+              }
             }
           }
         ],
@@ -1478,9 +2227,18 @@
             "blockType": "COMMAND",
             "text": "motor [MOTOR_ID] [MOTOR_DIRECTION] for [DURATION] seconds",
             "arguments": {
-              "MOTOR_ID": {"type": "STRING", "menu": "MOTOR_ID"},
-              "MOTOR_DIRECTION": {"type": "STRING", "menu": "MOTOR_DIRECTION"},
-              "DURATION": {"type": "NUMBER", "defaultValue": 1}
+              "MOTOR_ID": {
+                "type": "STRING",
+                "menu": "MOTOR_ID"
+              },
+              "MOTOR_DIRECTION": {
+                "type": "STRING",
+                "menu": "MOTOR_DIRECTION"
+              },
+              "DURATION": {
+                "type": "NUMBER",
+                "defaultValue": 1
+              }
             }
           },
           {
@@ -1488,8 +2246,14 @@
             "blockType": "COMMAND",
             "text": "motor [MOTOR_ID] on for [DURATION] seconds",
             "arguments": {
-              "MOTOR_ID": {"type": "STRING", "menu": "MOTOR_ID"},
-              "DURATION": {"type": "NUMBER", "defaultValue": 1}
+              "MOTOR_ID": {
+                "type": "STRING",
+                "menu": "MOTOR_ID"
+              },
+              "DURATION": {
+                "type": "NUMBER",
+                "defaultValue": 1
+              }
             }
           },
           {
@@ -1497,8 +2261,14 @@
             "blockType": "COMMAND",
             "text": "set [MOTOR_ID] motor power to [POWER]",
             "arguments": {
-              "MOTOR_ID": {"type": "STRING", "menu": "MOTOR_ID"},
-              "POWER": {"type": "NUMBER", "defaultValue": 100}
+              "MOTOR_ID": {
+                "type": "STRING",
+                "menu": "MOTOR_ID"
+              },
+              "POWER": {
+                "type": "NUMBER",
+                "defaultValue": 100
+              }
             }
           },
           {
@@ -1506,8 +2276,14 @@
             "blockType": "COMMAND",
             "text": "set [MOTOR_ID] motor direction to [MOTOR_DIRECTION]",
             "arguments": {
-              "MOTOR_ID": {"type": "STRING", "menu": "MOTOR_ID"},
-              "MOTOR_DIRECTION": {"type": "STRING", "menu": "MOTOR_DIRECTION"}
+              "MOTOR_ID": {
+                "type": "STRING",
+                "menu": "MOTOR_ID"
+              },
+              "MOTOR_DIRECTION": {
+                "type": "STRING",
+                "menu": "MOTOR_DIRECTION"
+              }
             }
           },
           {
@@ -1515,7 +2291,10 @@
             "blockType": "REPORTER",
             "text": "motor [MOTOR_ID] power",
             "arguments": {
-              "MOTOR_ID": {"type": "STRING", "menu": "MOTOR_ID"}
+              "MOTOR_ID": {
+                "type": "STRING",
+                "menu": "MOTOR_ID"
+              }
             }
           },
           {
@@ -1523,7 +2302,10 @@
             "blockType": "REPORTER",
             "text": "motor [MOTOR_ID] direction",
             "arguments": {
-              "MOTOR_ID": {"type": "STRING", "menu": "MOTOR_ID"}
+              "MOTOR_ID": {
+                "type": "STRING",
+                "menu": "MOTOR_ID"
+              }
             }
           },
           {
@@ -1551,35 +2333,77 @@
           "MOTOR_ID": {
             "acceptReporters": true,
             "items": [
-              {"text": "all", "value": "all"},
-              {"text": "A", "value": "A"},
-              {"text": "B", "value": "B"}
+              {
+                "text": "all",
+                "value": "all"
+              },
+              {
+                "text": "A",
+                "value": "A"
+              },
+              {
+                "text": "B",
+                "value": "B"
+              }
             ]
           },
           "MOTOR_DIRECTION": {
-            "acceptReporters": false,
+            "acceptReporters": true,
             "items": [
-              {"text": "this way", "value": "this way"},
-              {"text": "that way", "value": "that way"},
-              {"text": "reverse", "value": "reverse"}
+              {
+                "text": "this way",
+                "value": "this way"
+              },
+              {
+                "text": "that way",
+                "value": "that way"
+              },
+              {
+                "text": "reverse",
+                "value": "reverse"
+              }
             ]
           },
           "OP": {
-            "acceptReporters": false,
+            "acceptReporters": true,
             "items": [
-              {"text": "<", "value": "<"},
-              {"text": "=", "value": "="},
-              {"text": ">", "value": ">"}
+              {
+                "text": "<",
+                "value": "<"
+              },
+              {
+                "text": "=",
+                "value": "="
+              },
+              {
+                "text": ">",
+                "value": ">"
+              }
             ]
           },
           "TILT_DIRECTION_ANY": {
             "acceptReporters": true,
             "items": [
-              {"text": "front", "value": "front"},
-              {"text": "back", "value": "back"},
-              {"text": "left", "value": "left"},
-              {"text": "right", "value": "right"},
-              {"text": "any", "value": "any"}
+              {
+                "text": "front",
+                "value": "front"
+              },
+              {
+                "text": "back",
+                "value": "back"
+              },
+              {
+                "text": "left",
+                "value": "left"
+              },
+              {
+                "text": "right",
+                "value": "right"
+              },
+              {
+                "text": "any",
+                "value": "any"
+              }
             ]
           }
         }
@@ -1591,7 +2415,10 @@
             "blockType": "HAT",
             "text": "when [BTN] button pressed",
             "arguments": {
-              "BTN": {"type": "STRING", "menu": "buttons"}
+              "BTN": {
+                "type": "STRING",
+                "menu": "buttons"
+              }
             }
           },
           {
@@ -1599,7 +2426,10 @@
             "blockType": "HAT",
             "text": "when gesture [GESTURE]",
             "arguments": {
-              "GESTURE": {"type": "STRING", "menu": "gestureOptions"}
+              "GESTURE": {
+                "type": "STRING",
+                "menu": "gestureOptions"
+              }
             }
           },
           {
@@ -1607,7 +2437,10 @@
             "blockType": "HAT",
             "text": "when pin [PINS] pressed",
             "arguments": {
-              "PINS": {"type": "STRING", "menu": "PINS"}
+              "PINS": {
+                "type": "STRING",
+                "menu": "PINS"
+              }
             }
           },
           {
@@ -1615,7 +2448,10 @@
             "blockType": "COMMAND",
             "text": "display [MATRIX]",
             "arguments": {
-              "MATRIX": {"type": "STRING", "menu": "MATRIX"}
+              "MATRIX": {
+                "type": "STRING",
+                "menu": "MATRIX"
+              }
             }
           },
           {
@@ -1623,7 +2459,10 @@
             "blockType": "COMMAND",
             "text": "display text [TEXT]",
             "arguments": {
-              "TEXT": {"type": "STRING", "defaultValue": "Hello!"}
+              "TEXT": {
+                "type": "STRING",
+                "defaultValue": "Hello!"
+              }
             }
           },
           {
@@ -1664,60 +2503,156 @@
         ],
         "menus": {
           "buttons": {
-            "acceptReporters": false,
+            "acceptReporters": true,
             "items": [
-              {"text": "A", "value": "A"},
-              {"text": "B", "value": "B"},
-              {"text": "A+B", "value": "AB"}
+              {
+                "text": "A",
+                "value": "A"
+              },
+              {
+                "text": "B",
+                "value": "B"
+              },
+              {
+                "text": "A+B",
+                "value": "AB"
+              }
             ]
           },
           "gestureOptions": {
-            "acceptReporters": false,
+            "acceptReporters": true,
             "items": [
-              {"text": "shake", "value": "shake"},
-              {"text": "tilt up", "value": "tilt up"},
-              {"text": "tilt down", "value": "tilt down"},
-              {"text": "tilt left", "value": "tilt left"},
-              {"text": "tilt right", "value": "tilt right"},
-              {"text": "face up", "value": "face up"},
-              {"text": "face down", "value": "face down"},
-              {"text": "freely", "value": "freely"}
+              {
+                "text": "shake",
+                "value": "shake"
+              },
+              {
+                "text": "tilt up",
+                "value": "tilt up"
+              },
+              {
+                "text": "tilt down",
+                "value": "tilt down"
+              },
+              {
+                "text": "tilt left",
+                "value": "tilt left"
+              },
+              {
+                "text": "tilt right",
+                "value": "tilt right"
+              },
+              {
+                "text": "face up",
+                "value": "face up"
+              },
+              {
+                "text": "face down",
+                "value": "face down"
+              },
+              {
+                "text": "freely",
+                "value": "freely"
+              }
             ]
           },
           "PINS": {
-            "acceptReporters": false,
+            "acceptReporters": true,
             "items": [
-              {"text": "0", "value": "0"},
-              {"text": "1", "value": "1"},
-              {"text": "2", "value": "2"}
+              {
+                "text": "0",
+                "value": "0"
+              },
+              {
+                "text": "1",
+                "value": "1"
+              },
+              {
+                "text": "2",
+                "value": "2"
+              }
             ]
           },
           "MATRIX": {
             "acceptReporters": false,
             "items": [
-              {"text": "heart", "value": "heart"},
-              {"text": "happy", "value": "happy"},
-              {"text": "sad", "value": "sad"},
-              {"text": "confused", "value": "confused"},
-              {"text": "angry", "value": "angry"},
-              {"text": "asleep", "value": "asleep"},
-              {"text": "surprised", "value": "surprised"},
-              {"text": "meh", "value": "meh"},
-              {"text": "yes", "value": "yes"},
-              {"text": "no", "value": "no"},
-              {"text": "confused", "value": "confused"},
-              {"text": "arrow north", "value": "arrow_north"},
-              {"text": "arrow east", "value": "arrow_e"},
-              {"text": "arrow south", "value": "arrow_s"},
-              {"text": "arrow west", "value": "arrow_w"}
+              {
+                "text": "heart",
+                "value": "heart"
+              },
+              {
+                "text": "happy",
+                "value": "happy"
+              },
+              {
+                "text": "sad",
+                "value": "sad"
+              },
+              {
+                "text": "confused",
+                "value": "confused"
+              },
+              {
+                "text": "angry",
+                "value": "angry"
+              },
+              {
+                "text": "asleep",
+                "value": "asleep"
+              },
+              {
+                "text": "surprised",
+                "value": "surprised"
+              },
+              {
+                "text": "meh",
+                "value": "meh"
+              },
+              {
+                "text": "yes",
+                "value": "yes"
+              },
+              {
+                "text": "no",
+                "value": "no"
+              },
+              {
+                "text": "confused",
+                "value": "confused"
+              },
+              {
+                "text": "arrow north",
+                "value": "arrow_north"
+              },
+              {
+                "text": "arrow east",
+                "value": "arrow_e"
+              },
+              {
+                "text": "arrow south",
+                "value": "arrow_s"
+              },
+              {
+                "text": "arrow west",
+                "value": "arrow_w"
+              }
             ]
           },
           "TILT_AXES": {
-            "acceptReporters": false,
+            "acceptReporters": true,
             "items": [
-              {"text": "x", "value": "x"},
-              {"text": "y", "value": "y"},
-              {"text": "z", "value": "z"}
+              {
+                "text": "x",
+                "value": "x"
+              },
+              {
+                "text": "y",
+                "value": "y"
+              },
+              {
+                "text": "z",
+                "value": "z"
+              }
             ]
           }
         }
@@ -1729,7 +2664,10 @@
             "blockType": "HAT",
             "text": "when tilted [TILT]",
             "arguments": {
-              "TILT": {"type": "STRING", "menu": "BOOST_TILT_MENU"}
+              "TILT": {
+                "type": "STRING",
+                "menu": "BOOST_TILT_MENU"
+              }
             }
           },
           {
@@ -1737,8 +2675,14 @@
             "blockType": "COMMAND",
             "text": "motor [MOTOR] on for [DURATION] seconds",
             "arguments": {
-              "MOTOR": {"type": "STRING", "menu": "BOOST_MOTOR_MENU"},
-              "DURATION": {"type": "NUMBER", "defaultValue": 1}
+              "MOTOR": {
+                "type": "STRING",
+                "menu": "BOOST_MOTOR_MENU"
+              },
+              "DURATION": {
+                "type": "NUMBER",
+                "defaultValue": 1
+              }
             }
           },
           {
@@ -1746,7 +2690,10 @@
             "blockType": "COMMAND",
             "text": "turn [MOTOR] on",
             "arguments": {
-              "MOTOR": {"type": "STRING", "menu": "BOOST_MOTOR_MENU"}
+              "MOTOR": {
+                "type": "STRING",
+                "menu": "BOOST_MOTOR_MENU"
+              }
             }
           },
           {
@@ -1754,7 +2701,10 @@
             "blockType": "COMMAND",
             "text": "turn [MOTOR] off",
             "arguments": {
-              "MOTOR": {"type": "STRING", "menu": "BOOST_MOTOR_MENU"}
+              "MOTOR": {
+                "type": "STRING",
+                "menu": "BOOST_MOTOR_MENU"
+              }
             }
           },
           {
@@ -1762,8 +2712,14 @@
             "blockType": "COMMAND",
             "text": "set [MOTOR] speed to [POWER]",
             "arguments": {
-              "MOTOR": {"type": "STRING", "menu": "BOOST_MOTOR_MENU"},
-              "POWER": {"type": "NUMBER", "defaultValue": 50}
+              "MOTOR": {
+                "type": "STRING",
+                "menu": "BOOST_MOTOR_MENU"
+              },
+              "POWER": {
+                "type": "NUMBER",
+                "defaultValue": 50
+              }
             }
           },
           {
@@ -1771,8 +2727,14 @@
             "blockType": "COMMAND",
             "text": "set [MOTOR] direction to [DIRECTION]",
             "arguments": {
-              "MOTOR": {"type": "STRING", "menu": "BOOST_MOTOR_MENU"},
-              "DIRECTION": {"type": "STRING", "menu": "BOOST_DIRECTION_MENU"}
+              "MOTOR": {
+                "type": "STRING",
+                "menu": "BOOST_MOTOR_MENU"
+              },
+              "DIRECTION": {
+                "type": "STRING",
+                "menu": "BOOST_DIRECTION_MENU"
+              }
             }
           },
           {
@@ -1780,7 +2742,10 @@
             "blockType": "REPORTER",
             "text": "tilt angle [TILT]",
             "arguments": {
-              "TILT": {"type": "STRING", "menu": "BOOST_TILT_MENU"}
+              "TILT": {
+                "type": "STRING",
+                "menu": "BOOST_TILT_MENU"
+              }
             }
           },
           {
@@ -1798,27 +2763,60 @@
           "BOOST_MOTOR_MENU": {
             "acceptReporters": true,
             "items": [
-              {"text": "A", "value": "A"},
-              {"text": "B", "value": "B"},
-              {"text": "A+B", "value": "AB"},
-              {"text": "C", "value": "C"}
+              {
+                "text": "A",
+                "value": "A"
+              },
+              {
+                "text": "B",
+                "value": "B"
+              },
+              {
+                "text": "A+B",
+                "value": "AB"
+              },
+              {
+                "text": "C",
+                "value": "C"
+              }
             ]
           },
           "BOOST_TILT_MENU": {
             "acceptReporters": true,
             "items": [
-              {"text": "front", "value": "front"},
-              {"text": "back", "value": "back"},
-              {"text": "left", "value": "left"},
-              {"text": "right", "value": "right"}
+              {
+                "text": "front",
+                "value": "front"
+              },
+              {
+                "text": "back",
+                "value": "back"
+              },
+              {
+                "text": "left",
+                "value": "left"
+              },
+              {
+                "text": "right",
+                "value": "right"
+              }
             ]
           },
           "BOOST_DIRECTION_MENU": {
-            "acceptReporters": false,
+            "acceptReporters": true,
             "items": [
-              {"text": "clockwise", "value": "clockwise"},
-              {"text": "counterclockwise", "value": "counterclockwise"},
-              {"text": "reverse", "value": "reverse"}
+              {
+                "text": "clockwise",
+                "value": "clockwise"
+              },
+              {
+                "text": "counterclockwise",
+                "value": "counterclockwise"
+              },
+              {
+                "text": "reverse",
+                "value": "reverse"
+              }
             ]
           }
         }
@@ -1830,7 +2828,10 @@
             "blockType": "HAT",
             "text": "when [GESTURE] detected",
             "arguments": {
-              "GESTURE": {"type": "STRING", "menu": "gestureOptions"}
+              "GESTURE": {
+                "type": "STRING",
+                "menu": "gestureOptions"
+              }
             }
           },
           {
@@ -1838,7 +2839,10 @@
             "blockType": "HAT",
             "text": "when force sensor [PUSH_PULL]",
             "arguments": {
-              "PUSH_PULL": {"type": "STRING", "menu": "pushPullOptions"}
+              "PUSH_PULL": {
+                "type": "STRING",
+                "menu": "pushPullOptions"
+              }
             }
           },
           {
@@ -1876,28 +2880,64 @@
           "gestureOptions": {
             "acceptReporters": true,
             "items": [
-              {"text": "shaken", "value": "shaken"},
-              {"text": "thrown", "value": "thrown"},
-              {"text": "pushed", "value": "pushed"},
-              {"text": "pulled", "value": "pulled"},
-              {"text": "freefall", "value": "freefall"},
-              {"text": "tilted", "value": "tilted"}
+              {
+                "text": "shaken",
+                "value": "shaken"
+              },
+              {
+                "text": "thrown",
+                "value": "thrown"
+              },
+              {
+                "text": "pushed",
+                "value": "pushed"
+              },
+              {
+                "text": "pulled",
+                "value": "pulled"
+              },
+              {
+                "text": "freefall",
+                "value": "freefall"
+              },
+              {
+                "text": "tilted",
+                "value": "tilted"
+              }
             ]
           },
           "pushPullOptions": {
             "acceptReporters": true,
             "items": [
-              {"text": "pushed", "value": "pushed"},
-              {"text": "pulled", "value": "pulled"}
+              {
+                "text": "pushed",
+                "value": "pushed"
+              },
+              {
+                "text": "pulled",
+                "value": "pulled"
+              }
             ]
           },
           "TILT": {
             "acceptReporters": true,
             "items": [
-              {"text": "front", "value": "front"},
-              {"text": "back", "value": "back"},
-              {"text": "left", "value": "left"},
-              {"text": "right", "value": "right"}
+              {
+                "text": "front",
+                "value": "front"
+              },
+              {
+                "text": "back",
+                "value": "back"
+              },
+              {
+                "text": "left",
+                "value": "left"
+              },
+              {
+                "text": "right",
+                "value": "right"
+              }
             ]
           }
         }
@@ -1909,7 +2949,10 @@
             "blockType": "COMMAND",
             "text": "motor [MOTOR] on",
             "arguments": {
-              "MOTOR": {"type": "STRING", "menu": "MOTOR_MENU"}
+              "MOTOR": {
+                "type": "STRING",
+                "menu": "MOTOR_MENU"
+              }
             }
           },
           {
@@ -1917,8 +2960,14 @@
             "blockType": "COMMAND",
             "text": "motor [MOTOR] on for [DURATION] seconds",
             "arguments": {
-              "MOTOR": {"type": "STRING", "menu": "MOTOR_MENU"},
-              "DURATION": {"type": "NUMBER", "defaultValue": 1}
+              "MOTOR": {
+                "type": "STRING",
+                "menu": "MOTOR_MENU"
+              },
+              "DURATION": {
+                "type": "NUMBER",
+                "defaultValue": 1
+              }
             }
           },
           {
@@ -1926,8 +2975,14 @@
             "blockType": "COMMAND",
             "text": "set [MOTOR] power to [POWER] %",
             "arguments": {
-              "MOTOR": {"type": "STRING", "menu": "MOTOR_MENU"},
-              "POWER": {"type": "NUMBER", "defaultValue": 50}
+              "MOTOR": {
+                "type": "STRING",
+                "menu": "MOTOR_MENU"
+              },
+              "POWER": {
+                "type": "NUMBER",
+                "defaultValue": 50
+              }
             }
           },
           {
@@ -1935,8 +2990,14 @@
             "blockType": "COMMAND",
             "text": "set [MOTOR] direction to [DIRECTION]",
             "arguments": {
-              "MOTOR": {"type": "STRING", "menu": "MOTOR_MENU"},
-              "DIRECTION": {"type": "STRING", "menu": "DIRECTION_MENU"}
+              "MOTOR": {
+                "type": "STRING",
+                "menu": "MOTOR_MENU"
+              },
+              "DIRECTION": {
+                "type": "STRING",
+                "menu": "DIRECTION_MENU"
+              }
             }
           },
           {
@@ -1944,7 +3005,10 @@
             "blockType": "COMMAND",
             "text": "stop [MOTOR]",
             "arguments": {
-              "MOTOR": {"type": "STRING", "menu": "MOTOR_MENU"}
+              "MOTOR": {
+                "type": "STRING",
+                "menu": "MOTOR_MENU"
+              }
             }
           },
           {
@@ -1952,7 +3016,10 @@
             "blockType": "REPORTER",
             "text": "[MOTOR] position",
             "arguments": {
-              "MOTOR": {"type": "STRING", "menu": "MOTOR_MENU"}
+              "MOTOR": {
+                "type": "STRING",
+                "menu": "MOTOR_MENU"
+              }
             }
           },
           {
@@ -1980,8 +3047,14 @@
             "blockType": "COMMAND",
             "text": "beep note [NOTE] for [DURATION] secs",
             "arguments": {
-              "NOTE": {"type": "NUMBER", "defaultValue": 60},
-              "DURATION": {"type": "NUMBER", "defaultValue": 0.5}
+              "NOTE": {
+                "type": "NUMBER",
+                "defaultValue": 60
+              },
+              "DURATION": {
+                "type": "NUMBER",
+                "defaultValue": 0.5
+              }
             }
           }
         ],
@@ -1989,27 +3062,60 @@
           "MOTOR_MENU": {
             "acceptReporters": true,
             "items": [
-              {"text": "A", "value": "A"},
-              {"text": "B", "value": "B"},
-              {"text": "C", "value": "C"},
-              {"text": "D", "value": "D"},
-              {"text": "all", "value": "all"}
+              {
+                "text": "A",
+                "value": "A"
+              },
+              {
+                "text": "B",
+                "value": "B"
+              },
+              {
+                "text": "C",
+                "value": "C"
+              },
+              {
+                "text": "D",
+                "value": "D"
+              },
+              {
+                "text": "all",
+                "value": "all"
+              }
             ]
           },
           "DIRECTION_MENU": {
             "acceptReporters": false,
             "items": [
-              {"text": "clockwise", "value": "clockwise"},
-              {"text": "counterclockwise", "value": "counterclockwise"},
-              {"text": "reverse", "value": "reverse"}
+              {
+                "text": "clockwise",
+                "value": "clockwise"
+              },
+              {
+                "text": "counterclockwise",
+                "value": "counterclockwise"
+              },
+              {
+                "text": "reverse",
+                "value": "reverse"
+              }
             ]
           },
           "OP": {
             "acceptReporters": false,
             "items": [
-              {"text": "<", "value": "<"},
-              {"text": "=", "value": "="},
-              {"text": ">", "value": ">"}
+              {
+                "text": "<",
+                "value": "<"
+              },
+              {
+                "text": "=",
+                "value": "="
+              },
+              {
+                "text": ">",
+                "value": ">"
+              }
             ]
           }
         }
@@ -2021,7 +3127,10 @@
             "blockType": "HAT",
             "text": "when [KEY] key pressed",
             "arguments": {
-              "KEY": {"type": "STRING", "menu": "MAKEY_KEY_MENU"}
+              "KEY": {
+                "type": "STRING",
+                "menu": "MAKEY_KEY_MENU"
+              }
             }
           },
           {
@@ -2032,19 +3141,52 @@
         ],
         "menus": {
           "MAKEY_KEY_MENU": {
-            "acceptReporters": false,
+            "acceptReporters": true,
             "items": [
-              {"text": "up arrow", "value": "up arrow"},
-              {"text": "down arrow", "value": "down arrow"},
-              {"text": "left arrow", "value": "left arrow"},
-              {"text": "right arrow", "value": "right arrow"},
-              {"text": "space", "value": "space"},
-              {"text": "w", "value": "w"},
-              {"text": "a", "value": "a"},
-              {"text": "s", "value": "s"},
-              {"text": "d", "value": "d"},
-              {"text": "f", "value": "f"},
-              {"text": "g", "value": "g"}
+              {
+                "text": "up arrow",
+                "value": "up arrow"
+              },
+              {
+                "text": "down arrow",
+                "value": "down arrow"
+              },
+              {
+                "text": "left arrow",
+                "value": "left arrow"
+              },
+              {
+                "text": "right arrow",
+                "value": "right arrow"
+              },
+              {
+                "text": "space",
+                "value": "space"
+              },
+              {
+                "text": "w",
+                "value": "w"
+              },
+              {
+                "text": "a",
+                "value": "a"
+              },
+              {
+                "text": "s",
+                "value": "s"
+              },
+              {
+                "text": "d",
+                "value": "d"
+              },
+              {
+                "text": "f",
+                "value": "f"
+              },
+              {
+                "text": "g",
+                "value": "g"
+              }
             ]
           }
         }
