@@ -3,16 +3,16 @@
   inset: 0;
   z-index: 100;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
+  align-items: stretch;
+  justify-content: stretch;
+  padding: clamp(6px, 2.5vw, 18px);
   background: var(--ai-overlay);
   backdrop-filter: blur(6px);
 }
 
 .modal {
-  width: min(980px, 100%);
-  height: min(720px, 86vh);
+  width: 100%;
+  height: 100%;
   display: grid;
   grid-template-columns: 236px minmax(0, 1fr);
   overflow: hidden;
@@ -23,10 +23,87 @@
   box-shadow: 0 24px 80px var(--ai-shadow-strong);
 }
 
-.modalFullScreen {
+.modalCompact {
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-columns: 1fr;
+  border-radius: 12px;
+}
+
+.modalCompact .settingsNav {
+  flex-direction: row;
+  align-items: center;
+  min-height: 0;
+  overflow-x: auto;
+  border-right: 0;
+  border-bottom: 1px solid var(--ai-border-subtle);
+  padding: 8px;
+  gap: 8px;
+}
+
+.modalCompact .settingsTitle {
+  display: none;
+}
+
+.modalCompact .navList {
+  flex: 1 1 auto;
+  flex-direction: row;
+  min-width: max-content;
+}
+
+.modalCompact .navItem {
+  min-height: 34px;
+  justify-content: center;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+.modalCompact .navItem span:last-child {
+  white-space: nowrap;
+}
+
+.modalCompact .navFooter {
+  flex: 0 0 auto;
+  margin-top: 0;
+  margin-left: auto;
+  grid-template-columns: repeat(2, minmax(0, auto));
+}
+
+.modalCompact .settingsHeader {
+  min-height: 50px;
+  padding: 8px 12px;
+}
+
+.modalCompact .settingsContent {
+  padding: 10px;
+}
+
+.modalCompact .sectionStack {
+  gap: 10px;
+}
+
+.modalCompact .cardHeader,
+.modalCompact .cardBody {
+  padding: 10px;
+}
+
+.modalCompact .formGrid,
+.modalCompact .themeChoices,
+.modalCompact .modelRow,
+.modalCompact .modelItem {
+  grid-template-columns: 1fr;
+}
+
+.modalCompact .toolbar {
+  align-items: flex-start;
+  flex-direction: column;
+}
+
+.modalCompact .actions {
   width: 100%;
-  height: 100%;
-  border-radius: 0;
+}
+
+.modalCompact .actions > button {
+  flex: 1 1 0;
 }
 
 .settingsNav {
@@ -108,12 +185,12 @@
 }
 
 .settingsHeader {
-  min-height: 60px;
+  min-height: 56px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 14px 20px;
+  padding: 12px 18px;
   border-bottom: 1px solid var(--ai-border-subtle);
 }
 
@@ -133,7 +210,7 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 18px 20px 22px;
+  padding: 14px 18px 18px;
 }
 
 .sectionStack {
@@ -389,14 +466,16 @@
   display: none;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 760px), (max-height: 560px) {
   .overlay {
     padding: 0;
   }
 
-  .modal {
+  .modal,
+  .modalCompact {
     width: 100%;
     height: 100%;
+    grid-template-rows: auto minmax(0, 1fr);
     grid-template-columns: 1fr;
     border-radius: 0;
   }
@@ -404,23 +483,78 @@
   .settingsNav {
     flex-direction: row;
     align-items: center;
+    min-height: 0;
     overflow-x: auto;
     border-right: 0;
     border-bottom: 1px solid var(--ai-border-subtle);
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .settingsTitle {
+    display: none;
   }
 
   .navList {
+    flex: 1 1 auto;
+    display: flex;
     flex-direction: row;
+    min-width: max-content;
+  }
+
+  .navItem {
+    min-height: 34px;
+    justify-content: center;
+    padding: 0 8px;
+    font-size: 12px;
+  }
+
+  .navItem span:last-child {
+    white-space: nowrap;
   }
 
   .navFooter {
+    flex: 0 0 auto;
     margin-top: 0;
     margin-left: auto;
+    grid-template-columns: repeat(2, minmax(0, auto));
+  }
+
+  .settingsHeader {
+    min-height: 50px;
+    padding: 8px 12px;
+  }
+
+  .settingsContent {
+    padding: 10px;
+  }
+
+  .sectionStack {
+    gap: 10px;
+  }
+
+  .cardHeader,
+  .cardBody {
+    padding: 10px;
   }
 
   .formGrid,
+  .themeChoices,
   .modelRow,
-  .themeChoices {
+  .modelItem {
     grid-template-columns: 1fr;
+  }
+
+  .toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .actions {
+    width: 100%;
+  }
+
+  .actions > button {
+    flex: 1 1 0;
   }
 }

@@ -420,7 +420,7 @@ const AIAssistant: React.FC<PluginContext> = ({ vm, workspace }) => {
                       setShowSettings(false);
                       setEditingAgent(null);
                     }}
-                    isFullScreen={containerInfo.width < 600 || containerInfo.height < 500}
+                    isCompact={containerInfo.width < 760 || containerInfo.height < 560}
                   />
                 )}
 

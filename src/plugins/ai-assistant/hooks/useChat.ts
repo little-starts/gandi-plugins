@@ -24,10 +24,15 @@ interface UseChatOptions {
 
 const createMessageId = () => `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-const toProviderMessage = (message: ChatMessage, content: string) => ({
+const toProviderMessage = (message: ChatMessage, content: string, includeAssistantMetadata = false) => ({
   role: message.role,
   content,
-  ...(message.anthropic_content_blocks?.length
+  ...(includeAssistantMetadata && message.reasoning
+    ? {
+        reasoning: message.reasoning,
+      }
+    : {}),
+  ...(includeAssistantMetadata && message.anthropic_content_blocks?.length
     ? {
         anthropic_content_blocks: message.anthropic_content_blocks,
       }
@@ -45,10 +50,10 @@ const toProviderMessage = (message: ChatMessage, content: string) => ({
   ...(message.name ? { name: message.name } : {}),
 });
 
-const buildRequestMessages = (messages: ChatMessage[]) =>
+const buildRequestMessages = (messages: ChatMessage[], includeAssistantMetadata = false) =>
   messages.map((message) => {
     if (message.role !== "user" || !message.attachments?.length) {
-      return toProviderMessage(message, message.content);
+      return toProviderMessage(message, message.content, includeAssistantMetadata);
     }
 
     const attachmentText = message.attachments
@@ -66,7 +71,7 @@ const buildRequestMessages = (messages: ChatMessage[]) =>
       ? `${message.content}\n\n=== Attachments ===\n${attachmentText}`
       : `=== Attachments ===\n${attachmentText}`;
 
-    return toProviderMessage(message, content);
+    return toProviderMessage(message, content, includeAssistantMetadata);
   });
 
 const SYSTEM_PROMPT = `You are an AI assistant inside Gandi IDE (Scratch environment).
@@ -330,7 +335,7 @@ export function useChat({
           agent: currentAgent,
           messages: [
             { id: createMessageId(), role: "system", content: SYSTEM_PROMPT },
-            ...buildRequestMessages(requestMessages),
+            ...buildRequestMessages(requestMessages, enableReasoning),
           ],
           tools: scratchToolSchemas,
           toolChoice: "auto",

@@ -17,7 +17,7 @@ interface SettingsModalProps {
   themeMode: ThemeMode;
   onThemeModeChange: (theme: ThemeMode) => void;
   onClose: () => void;
-  isFullScreen?: boolean;
+  isCompact?: boolean;
 }
 
 const PROVIDER_LABELS: Record<Agent["provider"], string> = {
@@ -57,7 +57,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   themeMode,
   onThemeModeChange,
   onClose,
-  isFullScreen,
+  isCompact,
 }) => {
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   const [activeSection, setActiveSection] = React.useState<SettingsSection>("agents");
@@ -147,8 +147,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   };
 
-  const sectionTitle =
-    activeSection === "agents" ? "模型与 Agent" : activeSection === "appearance" ? "外观" : "关于";
+  const sectionTitle = activeSection === "agents" ? "模型与 Agent" : activeSection === "appearance" ? "外观" : "关于";
   const sectionDescription =
     activeSection === "agents"
       ? "管理供应商、API Key、Base URL 和可选模型。"
@@ -159,7 +158,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   return (
     <div className={settings.overlay} onClick={onClose}>
       <div
-        className={`${settings.modal} ${isFullScreen ? settings.modalFullScreen : ""}`}
+        className={`${settings.modal} ${isCompact ? settings.modalCompact : ""}`}
         onClick={(event) => event.stopPropagation()}
       >
         <aside className={settings.settingsNav}>
@@ -349,7 +348,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         <div className={settings.agentItemHeader}>
                           <div>
                             <div className={settings.agentName}>{agent.name || (agent as any).displayName}</div>
-                            <div className={settings.agentProvider}>{PROVIDER_LABELS[agent.provider] || agent.provider}</div>
+                            <div className={settings.agentProvider}>
+                              {PROVIDER_LABELS[agent.provider] || agent.provider}
+                            </div>
                           </div>
                           <div className={settings.actions}>
                             <button type="button" className={settings.button} onClick={() => onEditAgent(agent)}>
@@ -358,7 +359,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             <button type="button" className={settings.button} onClick={() => onExportAgent(agent.id)}>
                               导出
                             </button>
-                            <button type="button" className={settings.dangerButton} onClick={() => onDeleteAgent(agent.id)}>
+                            <button
+                              type="button"
+                              className={settings.dangerButton}
+                              onClick={() => onDeleteAgent(agent.id)}
+                            >
                               删除
                             </button>
                           </div>
@@ -367,7 +372,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           {(agent.models || []).map((model) => (
                             <div key={model.id} className={settings.modelItem}>
                               <strong>{model.name}</strong>
-                              <span>{model.modelId}{model.maxTokens ? ` · ${model.maxTokens}` : ""}</span>
+                              <span>
+                                {model.modelId}
+                                {model.maxTokens ? ` · ${model.maxTokens}` : ""}
+                              </span>
                             </div>
                           ))}
                         </div>
