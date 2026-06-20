@@ -1,0 +1,983 @@
+.appShell {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--ai-bg-app);
+  color: var(--ai-text-primary);
+}
+
+.sidebar {
+  width: 284px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-height: 0;
+  overflow: hidden;
+  padding: 9px 8px 11px;
+  border-right: 1px solid var(--ai-border-subtle);
+  background: var(--ai-bg-sidebar);
+}
+
+.sidebarHeader {
+  padding: 10px;
+}
+
+.sidebarBrand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.sidebarBrandMark {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--ai-radius-sm);
+  background: var(--ai-bg-surface-active);
+  color: var(--ai-accent);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.sidebarBrandTitle {
+  display: block;
+  overflow: hidden;
+  color: var(--ai-text-primary);
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebarBrandSubtitle,
+.sidebarSectionLabel {
+  color: var(--ai-text-faint);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.sidebarSectionLabel {
+  margin: 8px 8px 2px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.sidebar > .sidebarSectionLabel {
+  display: none;
+}
+
+.historyModeBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 2px 6px;
+}
+
+.historyModeBar .sidebarSectionLabel {
+  margin: 0;
+}
+
+.historyModeButton {
+  min-height: 26px;
+  padding: 0 9px;
+  border: 1px solid var(--ai-border);
+  border-radius: var(--ai-radius-sm);
+  background: var(--ai-bg-surface);
+  color: var(--ai-text-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+  transition:
+    border-color var(--ai-transition-fast),
+    background-color var(--ai-transition-fast),
+    color var(--ai-transition-fast);
+}
+
+.historyModeButton:hover,
+.historyModeButtonActive {
+  border-color: var(--ai-border-strong);
+  background: var(--ai-bg-surface-hover);
+  color: var(--ai-text-primary);
+}
+
+.projectListPanel {
+  flex: 0 1 42%;
+  min-height: 104px;
+  max-height: min(260px, 42%);
+  display: flex;
+  flex-direction: column;
+  margin: 0 2px 7px;
+  padding: 7px;
+  border: 1px solid var(--ai-border-subtle);
+  border-radius: var(--ai-radius-md);
+  background: color-mix(in srgb, var(--ai-bg-surface) 78%, transparent);
+}
+
+.projectListToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+
+.projectListGhostButton,
+.projectListDangerButton {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--ai-border);
+  border-radius: var(--ai-radius-sm);
+  background: var(--ai-bg-surface);
+  color: var(--ai-text-secondary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.projectListGhostButton:hover {
+  border-color: var(--ai-border-strong);
+  background: var(--ai-bg-surface-hover);
+  color: var(--ai-text-primary);
+}
+
+.projectListDangerButton {
+  border-color: color-mix(in srgb, var(--ai-danger) 35%, var(--ai-border));
+  color: var(--ai-danger);
+}
+
+.projectListDangerButton:hover:not(:disabled) {
+  background: var(--ai-bg-danger);
+}
+
+.projectListDangerButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.projectList {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+}
+
+.projectListItem {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 7px;
+  border: 1px solid transparent;
+  border-radius: var(--ai-radius-sm);
+  color: var(--ai-text-secondary);
+  cursor: pointer;
+  transition:
+    border-color var(--ai-transition-fast),
+    background-color var(--ai-transition-fast),
+    color var(--ai-transition-fast);
+}
+
+.projectListItem:hover {
+  background: var(--ai-bg-surface-hover);
+  color: var(--ai-text-primary);
+}
+
+.projectListItemSelected {
+  border-color: color-mix(in srgb, var(--ai-accent) 40%, var(--ai-border));
+  background: color-mix(in srgb, var(--ai-accent) 10%, transparent);
+}
+
+.projectListItemCurrent {
+  box-shadow: inset 3px 0 0 var(--ai-accent);
+}
+
+.projectListItem input {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  accent-color: var(--ai-accent);
+}
+
+.projectListItemMain {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.projectListItemMain strong,
+.projectListItemMain small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.projectListItemMain strong {
+  color: inherit;
+  font-size: 12.5px;
+  font-weight: 720;
+}
+
+.projectListItemMain small {
+  color: var(--ai-text-faint);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.sidebarNewChat,
+.historyItem {
+  width: 100%;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--ai-radius-sm);
+  background: transparent;
+  color: var(--ai-text-secondary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  text-align: left;
+  transition:
+    background-color var(--ai-transition-fast),
+    color var(--ai-transition-fast);
+}
+
+.sidebarNewChat:hover,
+.historyItem:hover {
+  background: var(--ai-bg-surface-hover);
+  color: var(--ai-text-primary);
+}
+
+.navIcon {
+  width: 18px;
+  flex-shrink: 0;
+  display: inline-flex;
+  justify-content: center;
+  color: var(--ai-text-muted);
+  font-size: 13px;
+}
+
+.historyList {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.historyEmpty {
+  margin: 4px 6px;
+  padding: 12px;
+  border: 1px dashed var(--ai-border);
+  border-radius: var(--ai-radius-sm);
+  color: var(--ai-text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.historyItem {
+  min-height: 34px;
+  justify-content: space-between;
+}
+
+.historyProjectGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 2px 0 8px;
+}
+
+.historyProjectHeader {
+  min-height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 7px;
+  color: var(--ai-text-muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.historyProjectActive .historyProjectHeader {
+  color: var(--ai-text-secondary);
+}
+
+.historyProjectTitle {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.historyProjectTitle span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.historyFolderIcon {
+  width: 16px;
+  flex-shrink: 0;
+  color: var(--ai-text-muted);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.historyProjectSessions {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 24px;
+}
+
+.historyProjectSessions .historyItem {
+  position: relative;
+  min-height: 32px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 52px;
+  align-items: center;
+  justify-content: stretch;
+  gap: 6px;
+  padding: 0 6px 0 8px;
+  border-radius: var(--ai-radius-sm);
+}
+
+.historyItemActive {
+  background: var(--ai-bg-surface-active);
+  color: var(--ai-text-primary);
+}
+
+.historyItemMain {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  justify-self: start;
+}
+
+.historyTitle {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.historyTitleInput {
+  width: 100%;
+  min-width: 0;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid var(--ai-border-strong);
+  border-radius: var(--ai-radius-xs);
+  outline: none;
+  background: var(--ai-bg-surface);
+  color: var(--ai-text-primary);
+  font: inherit;
+  font-size: 12.5px;
+}
+
+.historyMeta {
+  color: var(--ai-text-faint);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+  pointer-events: none;
+}
+
+.renameSessionButton,
+.deleteProjectButton,
+.deleteSessionButton {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--ai-radius-xs);
+  background: transparent;
+  color: var(--ai-text-faint);
+  cursor: pointer;
+  font: inherit;
+  opacity: 0;
+  transition:
+    background-color var(--ai-transition-fast),
+    color var(--ai-transition-fast),
+    opacity var(--ai-transition-fast);
+}
+
+.historyProjectHeader:hover .deleteProjectButton,
+.historyItem:hover .deleteSessionButton,
+.historyItem:hover .renameSessionButton,
+.historyItemActive:hover .deleteSessionButton,
+.historyItemActive:hover .renameSessionButton {
+  opacity: 1;
+}
+
+.renameSessionButton,
+.deleteSessionButton {
+  position: relative;
+  z-index: 2;
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+  align-self: center;
+  pointer-events: auto;
+}
+
+.renameSessionButton {
+  margin-right: 25px;
+}
+
+.historyItem:hover .historyMeta {
+  opacity: 0;
+}
+
+.historyItemDeletePending .historyMeta {
+  opacity: 0;
+}
+
+.renameSessionButton:hover {
+  background: var(--ai-bg-surface-hover);
+  color: var(--ai-text-primary);
+}
+
+.deleteProjectButton:hover,
+.deleteSessionButton:hover {
+  background: var(--ai-bg-danger);
+  color: var(--ai-danger);
+}
+
+.deleteSessionButtonConfirm,
+.deleteSessionButtonConfirm:hover {
+  width: 44px;
+  background: var(--ai-danger);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 760;
+  opacity: 1;
+}
+
+.mainPanel {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  background: var(--ai-bg-app);
+}
+
+.topBar {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 14px;
+  border-bottom: 1px solid var(--ai-border-subtle);
+  background: var(--ai-bg-app);
+}
+
+.topBarMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.topBarLeft {
+  flex: 0 1 280px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.conversationModeSwitch {
+  --ai-mode-color: var(--ai-mode-code);
+  --ai-mode-thumb-x: 65px;
+  --ai-mode-chat-opacity: 0;
+  --ai-mode-code-opacity: 1;
+  --ai-mode-chat-label-x: -24px;
+  --ai-mode-code-label-x: 0px;
+  --ai-mode-chat-icon-opacity: 0;
+  --ai-mode-code-icon-opacity: 1;
+
+  position: relative;
+  width: 104px;
+  height: 32px;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--ai-mode-color) 50%, var(--ai-border));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ai-mode-color) 16%, var(--ai-bg-elevated));
+  color: var(--ai-mode-color);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 820;
+  line-height: 1;
+  overflow: hidden;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #ffffff 12%, transparent),
+    0 7px 18px color-mix(in srgb, var(--ai-mode-color) 14%, transparent);
+  transition:
+    border-color 240ms var(--ai-ease),
+    background 240ms var(--ai-ease),
+    box-shadow 240ms var(--ai-ease);
+}
+
+.conversationModeSwitch[data-mode="chat"] {
+  --ai-mode-color: var(--ai-mode-chat);
+  --ai-mode-thumb-x: 0px;
+  --ai-mode-chat-opacity: 1;
+  --ai-mode-code-opacity: 0;
+  --ai-mode-chat-label-x: 0px;
+  --ai-mode-code-label-x: 24px;
+  --ai-mode-chat-icon-opacity: 1;
+  --ai-mode-code-icon-opacity: 0;
+}
+
+.conversationModeSwitch:hover {
+  border-color: color-mix(in srgb, var(--ai-mode-color) 72%, var(--ai-border-strong));
+  background: color-mix(in srgb, var(--ai-mode-color) 22%, var(--ai-bg-elevated));
+}
+
+.conversationModeLabel {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  text-transform: none;
+  transition:
+    opacity 220ms var(--ai-ease),
+    transform 260ms var(--ai-ease),
+    color 240ms var(--ai-ease);
+}
+
+.conversationModeLabelChat {
+  right: 9px;
+  width: 52px;
+  opacity: var(--ai-mode-chat-opacity);
+  transform: translateX(var(--ai-mode-chat-label-x));
+}
+
+.conversationModeLabelCode {
+  left: 9px;
+  width: 52px;
+  opacity: var(--ai-mode-code-opacity);
+  transform: translateX(var(--ai-mode-code-label-x));
+}
+
+.conversationModeThumb {
+  position: absolute;
+  z-index: 2;
+  top: 3px;
+  left: 3px;
+  width: 30px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  background: var(--ai-mode-color);
+  color: #ffffff;
+  box-shadow:
+    0 4px 12px color-mix(in srgb, var(--ai-mode-color) 34%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #ffffff 25%, transparent);
+  transform: translateX(var(--ai-mode-thumb-x));
+  transition:
+    transform 260ms var(--ai-ease),
+    background 240ms var(--ai-ease),
+    box-shadow 240ms var(--ai-ease);
+}
+
+.conversationModeIcon {
+  position: absolute;
+  inset: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    opacity 180ms var(--ai-ease),
+    transform 220ms var(--ai-ease);
+}
+
+.conversationModeIcon svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.conversationModeIconChat {
+  opacity: var(--ai-mode-chat-icon-opacity);
+  transform: scale(calc(0.86 + var(--ai-mode-chat-icon-opacity) * 0.14));
+}
+
+.conversationModeIconCode {
+  opacity: var(--ai-mode-code-icon-opacity);
+  transform: scale(calc(0.86 + var(--ai-mode-code-icon-opacity) * 0.14));
+}
+
+.topBarCenter {
+  flex: 0 1 300px;
+  min-width: 180px;
+  display: flex;
+  justify-content: center;
+}
+
+.topBarActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.iconButton,
+.primaryButton,
+.secondaryButton {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--ai-border);
+  border-radius: var(--ai-radius-md);
+  background: var(--ai-bg-surface);
+  color: var(--ai-text-secondary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12.5px;
+  transition:
+    border-color var(--ai-transition-fast),
+    background-color var(--ai-transition-fast),
+    color var(--ai-transition-fast),
+    transform var(--ai-transition-fast);
+}
+
+.iconButton {
+  min-width: 40px;
+  padding: 0 11px;
+}
+
+.secondaryButton {
+  padding: 0 12px;
+}
+
+.primaryButton {
+  padding: 0 12px;
+  border-color: var(--ai-accent);
+  background: var(--ai-accent);
+  color: #fff;
+}
+
+.iconButton:hover,
+.secondaryButton:hover {
+  border-color: var(--ai-border-strong);
+  background: var(--ai-bg-surface-hover);
+  color: var(--ai-text-primary);
+}
+
+.primaryButton:hover {
+  border-color: var(--ai-accent-strong);
+  background: var(--ai-accent-strong);
+  color: #fff;
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled {
+  cursor: default;
+  opacity: 0.62;
+}
+
+.projectIndexBanner {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--ai-border-subtle);
+  background: color-mix(in srgb, var(--ai-bg-surface) 82%, var(--ai-accent) 18%);
+}
+
+.projectIndexProgress {
+  --project-index-progress: 0%;
+
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at center, var(--ai-bg-app) 55%, transparent 56%),
+    conic-gradient(var(--ai-accent) var(--project-index-progress), var(--ai-border-subtle) 0);
+  color: var(--ai-text-primary);
+  font-size: 11px;
+  font-weight: 760;
+}
+
+.projectIndexText {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.projectIndexText strong {
+  overflow: hidden;
+  color: var(--ai-text-primary);
+  font-size: 13px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.projectIndexText span {
+  overflow: hidden;
+  color: var(--ai-text-secondary);
+  font-size: 12px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.projectIndexActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.projectIndexActions .primaryButton,
+.projectIndexActions .secondaryButton {
+  white-space: nowrap;
+}
+
+.modelSelector {
+  position: relative;
+  width: min(280px, 42vw);
+}
+
+.modelSelectorTrigger {
+  width: 100%;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 13px;
+  border: 1px solid var(--ai-border);
+  border-radius: var(--ai-radius-lg);
+  background: var(--ai-bg-surface);
+  color: var(--ai-text-primary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 650;
+}
+
+.modelSelectorTrigger:hover,
+.modelSelectorTriggerActive {
+  border-color: var(--ai-border-strong);
+  background: var(--ai-bg-surface-hover);
+}
+
+.modelSelectorText {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ai-text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modelSelectorChevron {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ai-text-muted);
+  transform: rotate(0deg);
+  transition: transform var(--ai-transition-fast);
+}
+
+.modelSelectorChevronOpen {
+  transform: rotate(90deg);
+}
+
+.modelSelectorChevron svg {
+  width: 12px;
+  height: 12px;
+}
+
+.modelMenu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  overflow: auto;
+  max-height: 300px;
+  padding: 6px;
+  border: 1px solid var(--ai-border);
+  border-radius: var(--ai-radius-lg);
+  background: var(--ai-bg-surface);
+  box-shadow: var(--ai-shadow-menu);
+}
+
+.modelMenuItem {
+  width: 100%;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--ai-radius-md);
+  background: transparent;
+  color: var(--ai-text-secondary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.modelMenuItem:hover {
+  background: var(--ai-bg-surface-hover);
+  color: var(--ai-text-primary);
+}
+
+.modelMenuItemActive {
+  background: var(--ai-bg-surface-active);
+  color: var(--ai-text-primary);
+}
+
+.drawerOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  justify-content: flex-start;
+  background: var(--ai-overlay);
+}
+
+.historyDrawer {
+  width: min(292px, 88vw);
+  height: 100%;
+  display: flex;
+  background: var(--ai-bg-sidebar);
+  box-shadow: var(--ai-shadow-floating);
+}
+
+.historyDrawer .sidebar {
+  width: 100%;
+  height: 100%;
+  border-right: 0;
+}
+
+.sessionSwitchOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: var(--ai-overlay);
+}
+
+.sessionSwitchDialog {
+  width: min(360px, 100%);
+  padding: 16px;
+  border: 1px solid var(--ai-border);
+  border-radius: var(--ai-radius-lg);
+  background: var(--ai-bg-surface);
+  box-shadow: var(--ai-shadow-floating);
+}
+
+.sessionSwitchMessage {
+  color: var(--ai-text-primary);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.sessionSwitchActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+@media (max-width: 720px) {
+  .sidebar {
+    width: 268px;
+  }
+
+  .topBarCenter {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .modelSelector {
+    width: 100%;
+  }
+
+  .projectIndexBanner {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .projectIndexBanner .primaryButton {
+    width: 100%;
+  }
+
+  .projectIndexActions {
+    grid-column: 1 / -1;
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .projectIndexActions .primaryButton,
+  .projectIndexActions .secondaryButton {
+    flex: 1 1 0;
+  }
+}

@@ -1,0 +1,582 @@
+﻿# CCWMMO
+
+CCWMMO is an MMO networking extension for multiplayer Scratch/Gandi projects. It connects a project to online rooms, synchronizes player state, broadcasts custom messages, lists available match rooms, and helps create sprite clones for remote players.
+
+Use it for online avatars, shared worlds, match lobbies, chat, room selection screens, real-time position sync, and reconnect handling.
+
+## Core Concepts
+
+- A room is the network space the project joins. The extension keeps one active room at a time.
+- Room types are `broadcast`, `lobby`, and `match`.
+- `broadcast` is best for simple shared-state or shared-message projects.
+- `lobby` watches match rooms with the same game id and receives room-list updates.
+- `match` is the room where players play together.
+- `GAME_ID` is combined with the current project UUID by the server, so the same text id is scoped to the project.
+- `NAME` is extra join data. It can be a player label, skin id, or JSON text like `{"team":"red","skin":"cat"}`.
+- A session ID identifies one player connection inside a room.
+- Player state fields are synchronized by the server. Writable fields are `name`, `x`, `y`, `scale`, `direction`, and `extra`.
+- `extra` values are strings. Use JSON text for structured data.
+- Prefer event hats with parameters. They provide values directly and avoid older V1 queue blocks.
+
+## Recommended Flow
+
+1. Join a room with an `and wait` block.
+2. Use `when I connected to a room` to initialize local state.
+3. Publish the local sprite position with `set x:[X] y:[Y]` in a loop.
+4. Use player event hats to create and update clones for other players.
+5. Use `broadcast [TYPE] with content [CONTENT]` for custom game events.
+6. Disconnect or reconnect when needed.
+
+Example:
+
+```text
+when green flag clicked
+join or create broadcast with server id "main" and extra data username and wait
+set Name to username
+forever
+  set x:(x position) y:(y position)
+  set Direction to (direction)
+end
+
+when new player connected, sessionId = [sessionId], name = [name], data = [data]
+if not <sessionId = (my session ID)> then
+  clone this sprite with state of session ID:(sessionId)
+end
+
+when I start as a clone
+if am I this clone? then
+  delete this clone
+end
+forever
+  go to x:(player's X of this clone) y:(player's Y of this clone)
+  point in direction (player's Direction of this clone)
+end
+```
+
+## Connection And Basic Info
+
+### `joinOrCreate`
+
+Block: `[METHOD] [ROOM] with server id [GAME_ID] and extra data [NAME]`
+
+Connects asynchronously to a room.
+
+- `METHOD`: `joinOrCreate` or `create`.
+- `ROOM`: `lobby`, `match`, or `broadcast`.
+- `GAME_ID`: text id for the room group.
+- `NAME`: extra join data.
+
+`joinOrCreate` joins an existing compatible room or creates one. `create` attempts to create a new room. The script continues without waiting for connection completion.
+
+### `joinOrCreateAndWait`
+
+Block: `[METHOD] [ROOM] with server id [GAME_ID] and extra data [NAME] and wait`
+
+Same as `joinOrCreate`, but waits for the connection attempt to finish before continuing. Use this in setup scripts before reading room info or setting player state.
+
+### `disconnectRoom`
+
+Block: `Disconnect`
+
+Leaves the current room, clears local messages, removes room listeners, stops ping measurement, and resets the active room reference.
+
+### `roomLag`
+
+Block: `lag(in ms)`
+
+Returns estimated network lag in milliseconds. Returns `-1` when not connected.
+
+### `getRoomInfo`
+
+Block: `my [TYPE]`
+
+Returns current room information.
+
+- `session ID`: this connection's session id.
+- `room ID`: server room id. Use it to join an exact match room.
+- `room type`: current room type/name.
+
+Returns `NaN` when no room is connected.
+
+### `setRoomExtra`
+
+Block: `set extra data of current room to [EXTRA]`
+
+Sets the current room-level `extra` string. Use it for shared metadata such as map, phase, or options.
+
+Example:
+
+```text
+set extra data of current room to "{\"map\":\"forest\",\"phase\":\"waiting\"}"
+```
+
+### `dispatchRoomStateChangedWithParams`
+
+Block: `when room state [FIELD] changed, session Id = [sessionId], state = [roomState], changes = [changes]`
+
+Triggers when room state changes.
+
+- `FIELD`: `any`, `extra data`, or `online count`.
+- `sessionId`: this client's session id.
+- `roomState`: JSON string of full room state.
+- `changes`: JSON string of the matching change or all changes.
+
+Use `extra data` to react to room metadata changes. Use `any` for full state monitoring.
+
+### `roomExtra`
+
+Block: `extra data of current room`
+
+Returns the current room state's `extra` string. Returns `NaN` if room state is unavailable.
+
+### `enableMultiLogin`
+
+Block: `accept multi-ids for one user [MULTI_LOGIN]`
+
+Enables or disables multiple simultaneous sessions for one user in the current room.
+
+- `Enable`: allow multiple sessions.
+- `Disable`: disallow multiple sessions.
+
+## Lobby Blocks
+
+Join a `lobby` room before using lobby blocks. A lobby receives the list of available match rooms for the same `GAME_ID`.
+
+### `dispatchLobbyRoomChangedWithParams`
+
+Block: `when rooms in lobby [TYPE], changed room = [rooms]`
+
+Triggers when the lobby room list changes.
+
+- `TYPE`: `any changes`, `created`, or `removed`.
+- `rooms`: JSON string for changed rooms.
+
+Use this to refresh room-list UI.
+
+### `getLobbyRoomInfoAt`
+
+Block: `get [ROOM_INFO] from [INDEX] of rooms in lobby`
+
+Reads one field from a lobby room by zero-based index.
+
+- `room ID`: joinable room id.
+- `room type`: room name.
+- `clients`: current player count.
+- `max clients`: maximum player count.
+- `created at`: server creation time value.
+- `metadata`: metadata JSON string.
+- `metadata.extra`: room extra data.
+- `metadata.locked`: lock state.
+- `all data in JSON`: full room JSON.
+
+Returns `NaN` if the index is invalid.
+
+### `getLobbyRoomCount`
+
+Block: `rooms in lobby`
+
+Returns the number of known match rooms in the lobby.
+
+### `setMatchRoomToList`
+
+Block: `fill [ROOM_INFO] match rooms into list [LIST]`
+
+Fills a Scratch list with one selected field from every known match room. Use it to display room ids, player counts, lock states, or room names.
+
+### `getMatchRooms`
+
+Block: `get [CONDITION] match rooms`
+
+Returns a JSON string of known match rooms.
+
+- `all`: all rooms.
+- `locked`: locked rooms.
+- `unlocked`: unlocked rooms.
+
+Lobby example:
+
+```text
+when green flag clicked
+join or create lobby with server id "arena" and extra data "viewer" and wait
+
+when rooms in lobby any changes, changed room = [rooms]
+fill room ID match rooms into list [RoomIds v]
+fill clients match rooms into list [PlayerCounts v]
+fill metadata.extra match rooms into list [RoomNames v]
+```
+
+## Match Game Blocks
+
+### `joinOrCreateMatch`
+
+Block: `[METHOD] match room with server id [GAME_ID], max players [MAX_CLIENTS] and extra data [NAME]`
+
+Asynchronously joins or creates a match room. It is a shortcut for joining room type `match`.
+
+- `METHOD`: `joinOrCreate` or `create`.
+- `GAME_ID`: match group id.
+- `MAX_CLIENTS`: maximum player count.
+- `NAME`: extra join data.
+
+### `joinOrCreateMatchAndWait`
+
+Block: `[METHOD] match room with server id [GAME_ID], max players [MAX_CLIENTS] and extra data [NAME] and wait`
+
+Same as `joinOrCreateMatch`, but waits until the connection attempt finishes.
+
+### `joinMatchmaking`
+
+Block: `Join a match room id [ROOM_ID] with server id [GAME_ID] and extra data [NAME]`
+
+Asynchronously disconnects from the current room, then joins an exact match room by `ROOM_ID`.
+
+Use `ROOM_ID` from `getLobbyRoomInfoAt room ID` or from a room-id list.
+
+### `joinMatchmakingAndWait`
+
+Block: `Join a match room id [ROOM_ID] with server id [GAME_ID] and extra data [NAME] and wait`
+
+Same as `joinMatchmaking`, but waits for the disconnect-and-join flow to finish.
+
+### `setMatchRoomSize`
+
+Block: `Set match room max players to [SIZE]`
+
+Sends a maximum-player update to the current room. This block exists in code but is not currently shown in the palette.
+
+### `lockRoom`
+
+Block: `Lock match room [LOCK]`
+
+Locks or unlocks the current match room.
+
+- `Lock`: mark room locked.
+- `Unlock`: mark room unlocked.
+
+Use it when a match starts so lobby users cannot enter mid-game.
+
+Match examples:
+
+```text
+when [Create Room v] clicked
+create match room with server id "arena", max players 4 and extra data "{\"title\":\"My Room\"}" and wait
+
+when [Join Selected v] clicked
+set [roomId v] to (item (selected index) of [RoomIds v])
+Join a match room id (roomId) with server id "arena" and extra data username and wait
+
+when [Start Match v] clicked
+Lock match room Lock
+set extra data of current room to "{\"phase\":\"playing\"}"
+```
+
+## Message Blocks
+
+Messages are custom room messages separate from synchronized player state. Use them for chat, attacks, emotes, ready checks, score events, item pickups, or game commands.
+
+### `broadcastMsg`
+
+Block: `broadcast [TYPE] with content [CONTENT]`
+
+Sends a custom message to the current room.
+
+- `TYPE`: message type, such as `chat`, `attack`, `ready`, or `score`.
+- `CONTENT`: text or JSON payload.
+
+Examples:
+
+```text
+broadcast "chat" with content (join username ": hello")
+broadcast "attack" with content "{\"weapon\":\"laser\",\"damage\":5}"
+```
+
+### `dispatchNewMessageWithParams`
+
+Block: `When new message received, sender session Id = [sender] UUID = [senderUID] name = [name] msg type = [type] content = [content]`
+
+Triggers when a non-system message is received.
+
+- `sender`: sender session id.
+- `senderUID`: sender user UUID.
+- `name`: sender name.
+- `type`: message type.
+- `content`: message content.
+
+Example:
+
+```text
+when new message received, sender session Id = [sender] UUID = [senderUID] name = [name] msg type = [type] content = [content]
+if <type = "chat"> then
+  add (join name (join ": " content)) to [Chat v]
+end
+```
+
+### V1 Message Queue Blocks
+
+These blocks are hidden unless V1 blocks are shown.
+
+- `dispatchNewMessage`: triggers when a message is received.
+- `getMessage`: selects the first queued message and either `delete`s or `keep`s it.
+- `getLastMessageContent`: returns the selected message's `type`, sender session id, sender name, or content.
+- `getMsgCount`: returns queued message count.
+- `dispatchMessageListChanged`: triggers when the queue changes.
+- `fillMessageToList`: fills a list with one field from every queued message.
+- `deleteMessageAt`: deletes a queued message by zero-based index.
+
+Prefer `dispatchNewMessageWithParams` for new projects.
+
+## Player Blocks
+
+### Player Info Fields
+
+Readable fields:
+
+- `Session ID`
+- `Name`
+- `X`
+- `Y`
+- `Scale`
+- `Direction`
+- `CCW UUID`
+- `connected?`
+- `Extra Data`
+- `All data in JSON`
+
+Writable fields:
+
+- `Name`
+- `X`
+- `Y`
+- `Scale`
+- `Direction`
+- `Extra Data`
+
+Numeric writable fields are rounded to two decimal places. Updates are throttled, so movement loops can call sync blocks repeatedly.
+
+### `getClientList`
+
+Block: `list of online players in format [FORMAT]`
+
+Returns online players.
+
+- `default`: records like `sessionId,uuid,name;`.
+- `JSON`: JSON array of player objects.
+
+Returns an empty string or `[]` when not connected.
+
+### `getPlayerCount`
+
+Block: `online player count`
+
+Returns current room player count, or `0` when not connected.
+
+### `getPlayerInfo`
+
+Block: `[PLAYER_INFO] of [SESSION_ID]`
+
+Returns one field for the player with the given session id.
+
+Use session ids from event parameters, room lists, player indexes, or `my session ID`.
+
+### `setPlayerState`
+
+Block: `set [PLAYER_INFO] to [VALUE]`
+
+Sets one writable field of the current player's synchronized state.
+
+Examples:
+
+```text
+set Name to username
+set Direction to (direction)
+set Extra Data to "{\"hp\":100,\"team\":\"red\"}"
+```
+
+### `setPlayerStateXY`
+
+Block: `set x:[X] y:[Y]`
+
+Sets the current player's synchronized `x` and `y` together. Prefer this over separate X and Y updates.
+
+Example:
+
+```text
+forever
+  set x:(x position) y:(y position)
+end
+```
+
+## Player Event Blocks
+
+### `dispatchRoomEnter`
+
+Block: `When I connected to a room`
+
+Triggers when this client enters a room. Initialize local state here.
+
+### `dispatchNewPlayerWithParams`
+
+Block: `When new player connected, sessionId = [sessionId], name = [name], data = [data]`
+
+Triggers when a player is added to the room.
+
+- `sessionId`: new player's session id.
+- `name`: new player's name.
+- `data`: full player JSON string.
+
+Use it to create a clone for the player. It can fire for the local player, so check session id or clone identity when needed.
+
+### `getNewPlayerInfo`
+
+Block: `[PLAYER_INFO] of the last connected player`
+
+Returns one field from the most recently connected player.
+
+### `dispatchPlayerLeaveWithParams`
+
+Block: `When player disconnected, sessionId = [sessionId], name = [name], data = [data]`
+
+Triggers when a player leaves.
+
+Use session id matching to delete or hide the correct clone.
+
+### `reconnectRoom`
+
+Block: `Reconnect`
+
+Attempts to reconnect to the same room using the stored room id and session id.
+
+### `dispatchPlayerLeaveAbnormal`
+
+Block: `when I disconnected abnormally`
+
+Triggers when the local connection closes abnormally or the server kicks a duplicate connection. Use it to show a reconnect prompt or call `Reconnect`.
+
+### `getLastLeftPlayerInfo`
+
+Block: `[PLAYER_INFO] of the last disconnected player`
+
+Returns one field from the most recently disconnected player.
+
+### `dispatchPlayerChangedWithParams`
+
+Block: `When player state changed, sessionId = [sessionId], name = [name], data = [data]`
+
+Triggers when a player's synchronized state changes.
+
+- `sessionId`: changed player's session id.
+- `name`: changed player's name.
+- `data`: full player JSON string.
+
+Use it to update a matching clone or react to remote state.
+
+### `getLastStateChangedPlayerInfo`
+
+Block: `[PLAYER_INFO] of the last state changed player`
+
+Returns one field from the most recently changed player.
+
+### `getPlayerInfoFromIndex`
+
+Block: `[PLAYER_INFO] from [INDEX] of players`
+
+Reads player data by zero-based index in the current player map. Returns an empty string if unavailable or invalid.
+
+### `createCloneWithLastPlayerState`
+
+Block: `clone this sprite with state of session ID:[SESSION_ID]`
+
+Creates a clone of the current sprite and attaches the selected player's MMO data to it.
+
+Behavior:
+
+- Looks up the player by session id.
+- Waits and retries briefly if state is not ready.
+- Creates a clone.
+- Stores the player's session id and state on the clone.
+- Places the clone behind the original sprite.
+
+### `getThisClonePlayerInfo`
+
+Block: `player's [PLAYER_INFO] of this clone`
+
+Returns one player field for the player represented by the current clone. Returns an empty string if the current target is not an MMO clone or room data is unavailable.
+
+Clone update example:
+
+```text
+when I start as a clone
+forever
+  go to x:(player's X of this clone) y:(player's Y of this clone)
+  point in direction (player's Direction of this clone)
+end
+```
+
+### V1 Player Event Blocks
+
+These blocks are hidden unless V1 blocks are shown.
+
+- `dispatchNewPlayer`: triggers when a player connects.
+- `dispatchPlayerLeave`: triggers when a player disconnects.
+- `dispatchPlayerChanged`: triggers when any player state changes.
+
+Prefer the parameter versions for new projects.
+
+## Utility Blocks
+
+### `isThisAClone`
+
+Block: `is a clone?`
+
+Returns true for clones and false for the original sprite.
+
+### `thisCloneIsMe`
+
+Block: `(DEPRECATED) am I this clone?`
+
+Deprecated and hidden. Checks whether the current clone represents the local session.
+
+### `thisCloneIsMeOrNot`
+
+Block: `[AMI] this clone?`
+
+Checks whether the current MMO clone represents the local player.
+
+- `am I`: true if this clone is the local session.
+- `am I not`: true if this clone is another player.
+
+Use this to avoid drawing the local player twice.
+
+### `isCloneSessionIdEqualTo`
+
+Block: `is clone's session ID = [SESSION_ID]?`
+
+Returns true if the current clone represents the given session id. Use it inside state-change or leave events to affect only one clone.
+
+### `switchDebugLog`
+
+Block: `[OPEN] debug log`
+
+Enables or disables extension debug logging.
+
+- `Open`: enable logs.
+- `Close`: disable logs.
+
+Use only while testing.
+
+### `showV1Blocks`
+
+Button. Shows or hides hidden V1 blocks in the palette. The setting is saved in local storage as `CCWMMO_showV1Blocks`.
+
+## Practical Notes
+
+- Use `and wait` join blocks in setup scripts.
+- Keep `GAME_ID` stable, for example `main`, `arena`, `level-1`, or `ranked`.
+- Use JSON strings for structured `extra` and message content, but keep them small.
+- Use `set x:[X] y:[Y]` for movement sync.
+- Do not call join blocks repeatedly in a forever loop.
+- Before joining a different room, disconnect or use a join flow that disconnects first.
+- For clone multiplayer, check whether a clone represents the local player and delete or hide it if the original sprite already represents the local player.
+- Use session id matching to update or delete the correct clone.
+- Room and player indexes are zero-based.
+- When no room is connected, reporters may return empty string, `0`, `[]`, `NaN`, or `-1` depending on the block.

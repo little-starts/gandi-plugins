@@ -1,0 +1,524 @@
+﻿# Dolly Pro
+
+Dolly Pro adds a clone management layer for Scratch projects. It gives every original sprite and clone a stable Dolly ID, lets clones store key-value data, supports clone tags, and provides blocks for targeting, sensing, motion, private messages, and clone lifecycle events.
+
+Use this extension when a project needs to control individual clones directly instead of treating all clones of one sprite as identical. Typical uses include enemies with HP, bullets with owners, units in teams, clickable objects, private clone communication, and clone-to-clone collision or movement logic.
+
+## Core Concepts
+
+- Dolly ID: A unique string that represents one original sprite or one clone. Blocks that accept `ID` use this Dolly ID. Auto-generated clone IDs look like `clone_1`, `clone_2`, etc. Custom IDs must be unique.
+- Original sprite: The non-clone sprite. It also has a Dolly ID and can be queried with ID/property blocks.
+- Attached data: Per-target key-value data stored by Dolly Pro. Keys are strings such as `HP`, `team`, `owner`, or `number`. Values can be text, numbers, or booleans.
+- Tag: A group label for clones. Many clones can share the same tag, and one clone can have multiple tags. Tags are safer than custom IDs when many clones belong to the same category.
+- Private variable access: Some blocks can read or write a clone's Scratch variables or lists by ID.
+- Preset blocks: Preset blocks configure only the next clone created in the same running script. After that clone is created, the preset data is cleared.
+- JSON outputs: Blocks that return ID lists or tag lists return JSON arrays such as `["enemy1","enemy2"]`.
+- Hidden blocks: Some uncommon or experimental blocks are hidden by default. Use the palette button `show other blocks` to reveal them.
+
+## Common Menu Values
+
+- Target type menu: `ID` targets one Dolly ID, `with tag` targets all clones with a tag, `of sprite` targets clones of a sprite name.
+- Clone property menu: `count` returns a number, `ID list` returns a JSON array of IDs.
+- Sprite property menu: `ID`, `x position`, `y position`, `sprite name`, `size`, `visible?`, `direction`, `costume number`, `costume name`, `data in JSON format`, and graphic effects such as `color effect`, `ghost effect`, or `brightness effect`.
+- Data operation menu: `set to` replaces a value, `change by` adds a numeric value.
+- List operation menu: `replace` overwrites a Scratch list, `insert` appends to the list.
+- Distance/direction menu: `distance`, `direction`, `angle(absolute)`, `angle(signed)`.
+- Motion menu: `go to`, `point towards`, `move steps`, `turn degrees`.
+- Nearest/farthest menu: `nearest` or `farthest`.
+- One/all menu: `one clone` returns one ID, `all clones` returns a JSON list.
+
+## Utility Blocks
+
+### `am I [TYPE]?`
+
+Returns whether the current target is `a clone` or `the original sprite`.
+
+Use it inside shared scripts to separate original-sprite behavior from clone behavior.
+
+Example:
+
+```text
+when green flag clicked
+if <am I [the original sprite]?> then
+  hide
+end
+```
+
+### `clone [PROPERTY] of [TARGET]`
+
+Gets clone information for a sprite or all sprites.
+
+- `TARGET`: A sprite name, `current sprite`, or `all sprites`.
+- `PROPERTY = count`: Number of clones.
+- `PROPERTY = ID list`: JSON array of clone IDs.
+
+Example result: `["enemy_1","enemy_2"]`.
+
+### `[PROPERTY] of [TARGET]`
+
+Hidden by default. Gets information about an original sprite, such as ID, x/y position, size, direction, costume, or Dolly data JSON.
+
+### `clone with ID [ID] exists?`
+
+Returns true if a Dolly target with this ID exists. It can match a clone or an original sprite.
+
+Use this before reading, moving, or deleting a clone by ID.
+
+## Clone And Delete Blocks
+
+### `preset [PROPERTY] of the next clone to [VALUE]`
+
+Presets a property for the next clone created by the current script.
+
+Supported properties include x position, y position, size, visible, direction, costume name, graphic effects, and `data in JSON format`.
+
+The preset is consumed by the next clone only.
+
+Example:
+
+```text
+preset [x position] of the next clone to (pick random -200 to 200)
+preset [y position] of the next clone to 160
+create clone of [myself]
+```
+
+### `preset [KEY] of the next clone to [VALUE]`
+
+Sets one attached data key for the next clone.
+
+Example:
+
+```text
+preset [HP] of the next clone to 100
+preset [team] of the next clone to red
+create clone of [Enemy]
+```
+
+### `preset variable [VAR] of the next clone to [VALUE]`
+
+Sets a Scratch private variable or list for the next clone. This does not change the variable on the sprite that creates the clone.
+
+For a list, `VALUE` should be a JSON array such as `[1,2,3]` or `["a","b"]`.
+
+### `preset data of the next clone as JSON [DATA_JSON]`
+
+Replaces the next clone's attached data object with a JSON object.
+
+Example:
+
+```json
+{"name":"common soldier","HP":100,"team":"red"}
+```
+
+The JSON must be an object, not an array.
+
+### `add tag [GROUP] for the next clone`
+
+Adds one tag to the next clone. Call it multiple times to give the clone multiple tags.
+
+Example:
+
+```text
+add tag [enemy] for the next clone
+add tag [ground_unit] for the next clone
+create clone of [Enemy]
+```
+
+### Scratch `create clone of [TARGET]`
+
+The original Scratch clone block appears in this category. Dolly Pro injects IDs, preset data, preset properties, variables, and tags into clones created by this block.
+
+### `create clone of [TARGET] with ID [ID]`
+
+Creates a clone and requests a custom Dolly ID.
+
+- Leave `ID` empty to use an automatic ID.
+- If the requested ID already exists, Dolly Pro warns and assigns an automatic ID instead.
+- Custom IDs are useful for unique objects such as `player_bullet_1`, `boss`, or `dialog_npc`.
+
+### `create clone of [TARGET] with data [KEY] set to [VALUE]`
+
+Creates a clone and immediately presets one attached data key. The generated ID is automatic.
+
+Example:
+
+```text
+create clone of [Bullet] with data [owner] set to (my ID)
+```
+
+### `just created clone's ID`
+
+Returns the ID of the clone most recently created by the current running script. Use it immediately after creating a clone.
+
+Example:
+
+```text
+create clone of [Enemy] with data [number] set to 1
+set [newEnemy v] to (just created clone's ID)
+[HP] of ID (newEnemy) [set to] 100
+```
+
+### `delete clone [ID]`
+
+Deletes the clone with this ID. Original sprites are not deleted by this block.
+
+## Event Blocks
+
+### `right before I start as a clone`
+
+Runs on a clone just before Scratch's original `when I start as a clone` event. Use it for initialization that must happen before normal clone startup scripts.
+
+### Scratch `when I start as a clone`
+
+The original Scratch clone startup hat appears in this category.
+
+### `when I'm deleted as a clone`
+
+Runs on a clone immediately before it is deleted. Use it for cleanup, effects, score changes, or removing references.
+
+### `when clone of [TARGET] is created. cloneID = [ID]`
+
+Runs when a clone is created.
+
+- `TARGET` can be a sprite or `any sprite`.
+- `ID` is the new clone's Dolly ID.
+- The event behaves like a broadcast and can be received by sprites and clones.
+
+### `when clone of [TARGET] is deteted. deletedID = [ID]`
+
+Runs when a clone is deleted.
+
+- `TARGET` can be a sprite or `any sprite`.
+- `ID` is the deleted clone's Dolly ID.
+
+### `send private message [MSG] to clone [MENU] [VALUE], with data [data]`
+
+Sends a private message to selected clones.
+
+- `MENU = ID`: `VALUE` is one Dolly ID.
+- `MENU = with tag`: `VALUE` is a tag, and all clones with that tag receive the message.
+- `MENU = of sprite`: `VALUE` is a sprite name, and clones of that sprite receive the message.
+- `data` is passed to the receiver.
+- The receiver also receives `senderID`.
+
+### `when I receive private message [MSG] for me. data = [data], senderID = [senderID]`
+
+Runs only on targets that receive the matching private message.
+
+Example:
+
+```text
+send private message [damage] to clone [ID] (enemyID), with data [10]
+
+when I receive private message [damage] for me. data = [data], senderID = [senderID]
+my [HP] [change by] ((0) - (data))
+```
+
+## Data Access Blocks
+
+### `my ID`
+
+Returns the Dolly ID of the current sprite or clone.
+
+This is the most important reporter for clone scripts. Store it in variables, attached data, or lists when other scripts need to target this clone later.
+
+### `ID of [TARGET]`
+
+Returns the Dolly ID of an original sprite.
+
+### `clone ID of [SPRITE] with data [KEY] set to [VALUE]`
+
+Searches clones of a sprite, the current sprite, or all sprites for the first clone whose attached data key equals a value.
+
+Returns one ID or an empty string.
+
+This is convenient but less efficient than direct ID or tag lookup because it scans clones.
+
+### `my [KEY]`
+
+Returns the current target's attached data value for a key. Returns empty string if the key does not exist.
+
+### `my [KEY] [OP] [VALUE]`
+
+Sets or changes the current target's attached data.
+
+- `set to`: Stores `VALUE` directly.
+- `change by`: Converts the old value and `VALUE` to numbers, then adds them.
+
+Example:
+
+```text
+my [HP] [change by] -10
+if <(my [HP]) <= 0> then
+  delete this clone
+end
+```
+
+### `[KEY] of ID [ID]`
+
+Returns attached data from the target with the given Dolly ID.
+
+### `[KEY] of ID [ID] [OP] [VALUE]`
+
+Sets or changes attached data on the target with the given Dolly ID.
+
+### `[PROPERTY] of ID [ID]`
+
+Returns a property of the target with this ID.
+
+Useful properties include ID, x position, y position, sprite name, size, visible, direction, costume number, costume name, data JSON, and graphic effects.
+
+### `[PROPERTY] of ID [ID] [OP] [VALUE]`
+
+Sets or changes a property of the target with this ID.
+
+Examples:
+
+```text
+[x position] of ID [enemy_1] [set to] 100
+[ghost effect] of ID [enemy_1] [change by] 10
+[direction] of ID [enemy_1] [set to] 90
+```
+
+### `variable [VAR] of ID [ID]`
+
+Reads a Scratch private variable or list from the target with this ID. Lists are returned as JSON arrays.
+
+### `variable [VAR] of ID [ID] [OP] [VALUE]`
+
+Sets or changes a Scratch private variable or list on the target with this ID.
+
+- Variables support `set to` and `change by`.
+- Lists support `set to` with a JSON array.
+- Lists do not support numeric `change by`.
+
+## Clone Tag Blocks
+
+### `[OP] myself as [GROUP]`
+
+Adds or removes a tag from the current target.
+
+Example:
+
+```text
+when I start as a clone
+tag myself as [enemy]
+```
+
+### `[OP] ID [ID] as [GROUP]`
+
+Adds or removes a tag from a target by ID.
+
+### `ID [ID] tagged as [GROUP]?`
+
+Returns true if the target with this ID has this tag.
+
+### `all tags of ID [ID]`
+
+Hidden by default. Returns a JSON array of all tags on the target.
+
+Example result: `["enemy","flying"]`.
+
+### `[PROPERTY] of clones with tag [GROUP]`
+
+Gets information about all clones with a tag.
+
+- `count`: Number of tagged clones.
+- `ID list`: JSON array of tagged clone IDs.
+
+### `[PROPERTY] of #[INDEX] clone with tag [GROUP]`
+
+Gets a property from the nth clone in a tag group. Index starts at 1.
+
+### `[OP] list [LIST] with IDs of clones with tag [GROUP]`
+
+Hidden by default. Imports IDs from a tag group into a Scratch list.
+
+- `replace`: Clears the list and writes the IDs.
+- `insert`: Appends IDs to the list.
+
+### `for each clone with tag [GROUP]`
+
+Hidden by default. C-shaped loop that iterates over tagged clones.
+
+Use `current clone ID` inside the loop body to get the current ID.
+
+This block may reduce compiled performance, so use it only when a simple ID list or tag operation is not enough.
+
+### `current clone ID`
+
+Hidden by default. Returns the ID of the clone currently selected by `for each clone with tag`.
+
+## Sensing Blocks
+
+### `get [TYPE] clone [MENU] [VALUE]`
+
+Returns the nearest or farthest clone ID relative to the current target.
+
+- `TYPE`: nearest or farthest.
+- `MENU = with tag`: Search tagged clones.
+- `MENU = of sprite`: Search clones of a sprite.
+- The original sprite is excluded from sprite clone searches.
+
+Example:
+
+```text
+set [targetID v] to (get [nearest] clone [with tag] [enemy])
+```
+
+### `get [TYPE] I'm touching [MENU] [VALUE]`
+
+Returns clones touched by the current target.
+
+- `one clone`: Returns one touching ID or empty string.
+- `all clones`: Returns a JSON array of all touching IDs.
+- Target by tag or by sprite.
+
+### `[OP] list [LIST] with clone IDs I'm touching [MENU] [VALUE]`
+
+Hidden by default. Imports all touching clone IDs into a Scratch list.
+
+### `touching clone [MENU] [VALUE]?`
+
+Returns whether the current target is touching clones selected by ID, tag, or sprite.
+
+### `ID [ID] touching a clone [MENU] [VALUE]`
+
+Returns whether one clone or target by ID is touching clones selected by ID, tag, or sprite.
+
+### `clone [MENU] [VALUE] touching x: [X] y: [Y]?`
+
+Returns whether any selected clone is touching the stage point.
+
+### `ID of the top-most at x: [X] y: [Y]`
+
+Hidden by default. Returns the Dolly ID of the topmost drawable target at the given Scratch coordinates, or empty string if none is found.
+
+## Motion Blocks
+
+### `[MENU] to ID [ID]`
+
+Calculates information from the current target to another target by ID.
+
+- `distance`: Pixel distance.
+- `direction`: Scratch direction needed to face the target.
+- `angle(absolute)`: Positive degrees needed to face the target.
+- `angle(signed)`: Signed degrees needed to face the target. Positive means clockwise, negative means counterclockwise.
+
+### `[MENU] from [ID1] to [ID2]`
+
+Calculates distance, direction, or angle between two targets by ID.
+
+### `[MENU] from [ID] to x: [X] y: [Y]`
+
+Calculates distance, direction, or angle from one target by ID to a point.
+
+### `[MOTION] ID [ID]`
+
+Moves or points the current target toward a target by ID.
+
+- `go to`: Sets the current target's x/y to the target's x/y.
+- `point towards`: Sets the current target direction to face the target.
+
+### `[MOTION] [VALUE] towards ID [ID]`
+
+Moves or rotates the current target toward a target by ID.
+
+- `move steps`: Moves up to `VALUE` pixels toward the target. If closer than `VALUE`, it lands on the target.
+- `turn degrees`: Rotates up to `VALUE` degrees toward the target. If the remaining angle is smaller, it points exactly at the target.
+
+## Experimental Blocks
+
+These blocks are hidden unless uncommon blocks are shown.
+
+### `modify my ID to [ID]`
+
+Changes the current target's Dolly ID. The new ID must be unique.
+
+Use this carefully. Existing scripts, lists, or data that stored the old ID will not update automatically.
+
+### `transfer access to sprite coordinates and direction in the extension to the following key data: [X_NAME], [Y_NAME], [DIR_NAME]`
+
+Makes Dolly Pro motion and sensing calculations use attached data keys instead of real Scratch x/y/direction.
+
+Example use case: a project stores logical positions in data keys `gridX`, `gridY`, and `angle` while the actual sprite positions are handled separately.
+
+Leave a key name empty to keep using the real Scratch property for that axis or direction.
+
+### `cancel the transfer of coordinate/direction data access`
+
+Restores Dolly Pro calculations to use real Scratch x/y/direction.
+
+## Patterns
+
+### Spawn Enemies With HP And Tags
+
+```text
+when green flag clicked
+repeat 10
+  preset [x position] of the next clone to (pick random -220 to 220)
+  preset [y position] of the next clone to (pick random -160 to 160)
+  preset [HP] of the next clone to 100
+  add tag [enemy] for the next clone
+  create clone of [Enemy]
+end
+```
+
+Inside `Enemy`:
+
+```text
+when I start as a clone
+show
+forever
+  if <(my [HP]) <= 0> then
+    delete this clone
+  end
+end
+```
+
+### Damage The Clone That Was Hit
+
+```text
+set [hitID v] to (get [one clone] I'm touching [with tag] [enemy])
+if <clone with ID (hitID) exists?> then
+  [HP] of ID (hitID) [change by] -10
+end
+```
+
+### Move Toward The Nearest Enemy
+
+```text
+set [enemyID v] to (get [nearest] clone [with tag] [enemy])
+if <clone with ID (enemyID) exists?> then
+  [point towards] ID (enemyID)
+  [move steps] 5 towards ID (enemyID)
+end
+```
+
+### Broadcast To A Group Of Clones
+
+```text
+send private message [freeze] to clone [with tag] [enemy], with data [2]
+
+when I receive private message [freeze] for me. data = [data], senderID = [senderID]
+my [frozenSeconds] [set to] (data)
+```
+
+### Store And Reuse Newly Created IDs
+
+```text
+preset [HP] of the next clone to 50
+create clone of [Enemy]
+add (just created clone's ID) to [enemy IDs v]
+```
+
+## Notes And Pitfalls
+
+- Prefer tags for groups of clones. Prefer custom IDs only for unique objects.
+- Check `clone with ID [ID] exists?` before controlling a stored ID, because clones can be deleted.
+- Preset blocks affect only the next clone in the same running script.
+- `change by` operations convert values to numbers. Non-numeric text behaves like 0 after conversion.
+- JSON list outputs are text. Use list-import blocks or a JSON/list helper extension if the project needs to iterate them outside Dolly Pro.
+- The clone deletion event runs immediately before deletion. Long waits in that script are not suitable for delaying deletion.
+- `for each clone with tag` is convenient but may reduce performance in compiled mode.
+- A custom ID collision does not replace the existing clone. The new clone receives an automatic ID instead.
