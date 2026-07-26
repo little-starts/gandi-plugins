@@ -28,9 +28,6 @@ const AddIcon = () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="cur
 const DeleteIcon = () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>);
 const CheckIcon = () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>);
 const GroupIcon = () => (<svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="11" y="3" width="6" height="6" rx="1"/><rect x="3" y="11" width="6" height="6" rx="1"/><rect x="11" y="11" width="6" height="6" rx="1"/></svg>);
-
-
-
 const DEFAULT_CONTAINER_INFO = { width: 229, height: 360, translateX: 72, translateY: 60 };
 
 declare global {
@@ -640,6 +637,10 @@ React.useEffect(() => {
         if (!field.getVariable()) {
           console.warn('[editor-optimization] Skipping variable field with no variable:', field.name);
           //这是某种Flyout流程的固有缺陷，editor-optimization并没有直接产生任何非法的variable field，此问题可能源于插件hack导致的加载时序问题，并且问题可能是偶发的。
+          toast.error(
+            '一些Blockly内部的固有错误意外触发，请刷新页面(F5)以恢复。',
+            { duration: 5000 }
+          );
           return null;
         }
         return origFieldToDomVariable.call(this, field);
@@ -655,7 +656,6 @@ React.useEffect(() => {
     if (!window.__ORIGINAL_DISPOSE_SVG__) {
       window.__ORIGINAL_DISPOSE_SVG__ = BlockSvg.prototype.dispose;
     }
-
     const origClear = window.__ORIGINAL_CLEAR_WS_SVG__;
     const origDispose = window.__ORIGINAL_DISPOSE_SVG__;
 
@@ -1063,7 +1063,6 @@ React.useEffect(() => {
   }, [blockly, workspace]);
 
 const workerRef = useRef<Worker | null>(null);
-
   //重构后的Pixi渲染器useEffect
 React.useEffect(() => {
   if (!pixiEnabled || !blockly || !workspace || !vm) {

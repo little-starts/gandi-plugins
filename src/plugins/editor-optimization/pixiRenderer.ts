@@ -25,6 +25,14 @@ export interface InputData {
   fill: string;
 }
 
+export interface LineData {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  stroke: string;
+}
+
 export interface BlockRenderData {
   id: string;
   type: string;
@@ -39,6 +47,7 @@ export interface BlockRenderData {
   depth: number;
   fields: FieldData[];
   inputs: InputData[];
+  lines: LineData[];
 }
 
 // ---------- 从 Blockly 积木树提取渲染数据 ----------
@@ -129,7 +138,36 @@ export function extractTreeBlocks(rootBlock: any, blockly: any): BlockRenderData
         });
       }
     }
-
+    // 提取分割线
+    const lines: LineData[] = [];
+    const svgGroup = block.svgGroup_;
+    if (svgGroup) {
+      const lineElements = svgGroup.querySelectorAll('line');
+      lineElements.forEach((line: SVGLineElement) => {
+        const x1 = parseFloat(line.getAttribute('x1') || '0');
+        const y1 = parseFloat(line.getAttribute('y1') || '0');
+        const x2 = parseFloat(line.getAttribute('x2') || '0');
+        const y2 = parseFloat(line.getAttribute('y2') || '0');
+        const stroke = line.getAttribute('stroke') || '#000000';
+        const parent = line.parentElement;
+        let parentX = 0, parentY = 0;
+        if (parent) {
+          const transform = parent.getAttribute('transform') || '';
+          const m = transform.match(/translate\(([^,]+),\s*([^)]+)\)/);
+          if (m) {
+            parentX = parseFloat(m[1]);
+            parentY = parseFloat(m[2]);
+          }
+        }
+        lines.push({
+          x1: parentX + x1,
+          y1: parentY + y1,
+          x2: parentX + x2,
+          y2: parentY + y2,
+          stroke,
+        });
+      });
+    }
     list.push({
       id: block.id,
       type: block.type,
@@ -144,6 +182,7 @@ export function extractTreeBlocks(rootBlock: any, blockly: any): BlockRenderData
       depth: getDepth(block),
       fields,
       inputs,
+      lines,
     });
 
     if (block.nextConnection) {
@@ -181,7 +220,7 @@ export class PixiBlockRenderer {
   public onRestoreDOM?: (rootBlockId: string) => void;
   private interactionsPaused = false;
   private pendingCreateBlocks: any[] = [];
-  private createBatchSize = 8; // 每帧创建5个容器，避免卡顿
+  private createBatchSize = 1; // 每帧创建1个容器，避免卡顿
   private lastPauseTime = 0;
   public currentHoveredRootId: string | null = null;
   private alphaAnimations: Map<PIXI.Container, { target: number; current: number }> = new Map();//hover的动画属性
@@ -279,49 +318,59 @@ export class PixiBlockRenderer {
     });
   }
   // 判断一个积木是否“简单”（没有输入子积木）
-private isBlockSimple(block: any): boolean {
-  if (!block) return false;
-  for (const input of block.inputList) {
-    if (input.connection?.targetBlock()) return false;
+  private isBlockSimple(block: any): boolean {
+    if (!block || !block.inputList) return false;
+    for (const input of block.inputList) {
+      // 有实际连接的子积木就不再是“简单”
+      if (input.connection?.targetBlock()) return false;
+    }
+    return true;
   }
-  return true;
-}
 
 // 从根积木开始提取简单链，返回分组数据列表
 private extractSimpleChains(rootBlock: any, data: BlockRenderData[]): BlockRenderData[][] {
   const chains: BlockRenderData[][] = [];
   const dataMap = new Map<string, BlockRenderData>();
   for (const item of data) dataMap.set(item.id, item);
-
   const visited = new Set<string>();
-  let current: BlockRenderData[] = [];
-  let block: any = rootBlock;
 
-  while (block && visited.size < data.length) {
-    const id = block.id;
+  // 从根积木开始，沿着 next 链遍历
+  let currentBlock = rootBlock;
+  let currentChain: BlockRenderData[] = [];
+
+  while (currentBlock) {
+    const id = currentBlock.id;
     if (visited.has(id)) break;
     const item = dataMap.get(id);
     if (!item) break;
 
-    if (this.isBlockSimple(block)) {
-      current.push(item);
+    // 判断当前积木是否“简单”（没有任何输入连接子积木）
+    const isSimple = this.isBlockSimple(currentBlock);
+    if (isSimple) {
+      currentChain.push(item);
       visited.add(id);
-      if (current.length >= 16) {
-        chains.push(current);
-        current = [];
+      if (currentChain.length >= 16) {
+        chains.push(currentChain);
+        currentChain = [];
       }
     } else {
-      // 遇到复杂块，保存当前链并中断
-      if (current.length > 0) chains.push(current);
-      current = [];
+      // 遇到复杂积木，终止当前链
+      if (currentChain.length > 0) {
+        chains.push(currentChain);
+        currentChain = [];
+      }
       visited.add(id);
-      // 处理复杂块的分支？这里先只收集复杂块本身，不深入
+      // 不深入处理复杂积木的子积木（因为它们可能包含分支，不适合简单链）
     }
 
-    // 沿着 next 连接继续
-    block = block.nextConnection?.targetBlock();
+    // 移动到下一个积木
+    currentBlock = currentBlock.nextConnection?.targetBlock();
   }
-  if (current.length > 0) chains.push(current);
+
+  // 收尾最后的链
+  if (currentChain.length > 0) {
+    chains.push(currentChain);
+  }
 
   return chains;
 }
@@ -411,8 +460,7 @@ private createBakedChainSprite(chainData: BlockRenderData[]): PIXI.Sprite {
       container.addChild(sprite);
     }
   }
-
-  const pad = 4;
+  const pad = 20;
   const texW = maxX - minX + pad * 2;
   const texH = maxY - minY + pad * 2;
 
@@ -429,7 +477,7 @@ private createBakedChainSprite(chainData: BlockRenderData[]): PIXI.Sprite {
   const sprite = new PIXI.Sprite(rt);
   sprite.x = minX - pad;
   sprite.y = minY - pad;
-  sprite.eventMode = 'none'; // 让事件穿透到父容器，保持 hover 正常
+  sprite.eventMode = 'static';
   return sprite;
 }
   syncView() {
@@ -531,24 +579,28 @@ private loadVisibleRoots(forcePixi: boolean, forceAll = false) {
   const container = new PIXI.Container();
   container.visible = true;
   (container as any).cacheAsTexture = true; //缓存以提高性能
-  container.alpha = 0.6; // 默认稍暗，hover 时变亮
-  this.alphaAnimations.set(container, { target: 0.6, current: 0.6 });
+  container.alpha = 0; // 默认稍暗，hover 时变亮
+  this.alphaAnimations.set(container, { target: 0.6, current: 0 });
 
-    const chains = this.extractSimpleChains(rootBlock, data);
+  const chains = this.extractSimpleChains(rootBlock, data);
   const groupedIds = new Set<string>();
   for (const chain of chains) {
+    // 收集链中积木的 ID，避免重复绘制
     for (const item of chain) groupedIds.add(item.id);
+    // 为每个链创建一个独立容器，防止烘焙 Sprite 受根容器 alpha 叠加影响
+    const chainContainer = new PIXI.Container();
     const bakedSprite = this.createBakedChainSprite(chain);
-    container.addChild(bakedSprite);
+    chainContainer.addChild(bakedSprite);
+    container.addChild(chainContainer);
   }
   const sorted = [...data].sort((a, b) => a.depth - b.depth);
-
+  const nonGrouped = sorted.filter(item => !groupedIds.has(item.id))
   // 绘制合并的形状（所有积木形状和输入）
   const shapeGraphics = new PIXI.Graphics();
   container.addChild(shapeGraphics);
   const ctx = shapeGraphics.context;
-
-  for (const item of sorted) {
+  
+  for (const item of nonGrouped) {
     if (item.pathD) {
       const path = new PIXI.GraphicsPath(item.pathD);
       ctx.translate(item.x, item.y);
@@ -574,7 +626,7 @@ private loadVisibleRoots(forcePixi: boolean, forceAll = false) {
   }
 
   // 处理文字字段：使用纹理缓存
-  for (const item of sorted) {
+  for (const item of nonGrouped) {
     for (const f of item.fields) {
       const cacheKey = `${f.fontSize || 16}_${f.fontFamily || 'sans-serif'}_${f.fill}_${f.text}`;
 
@@ -624,7 +676,6 @@ private loadVisibleRoots(forcePixi: boolean, forceAll = false) {
       container.addChild(sprite);
     }
   }
-
   // 交互：hover 时改变透明度
   container.eventMode = this.interactionsPaused ? 'none' : 'static';
   container.cursor = 'pointer';
