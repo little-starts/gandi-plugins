@@ -33,6 +33,8 @@ interface Extension {
   l10n?: {
     [key in L10n]: Record<string, string>;
   };
+  replaceable?: boolean;
+  url?: string;
 }
 
 interface ExtensionBlockMetadata {
@@ -303,6 +305,7 @@ declare namespace Scratch {
           url: string;
         }
       >;
+      addWildExtension(data: { id: string; url: string }): void;
       _supportedAssetTypes: Array<{
         contentType: string;
         immutable: boolean;
@@ -321,6 +324,7 @@ declare namespace Scratch {
     monitorBlocks: Scratch.Blocks;
     targets: Array<Scratch.RenderTarget>;
     allAssetsIsUploading?: boolean;
+    emitProjectChanged(): void;
     getTargetById: (targetId: string) => Scratch.RenderTarget;
     requestAddMonitor(monitorId: string, isRemoteOperation?: boolean): void;
     requestUpdateMonitor: (monitor: Map<unknown, unknown>) => boolean;
@@ -374,7 +378,7 @@ declare namespace Scratch {
     disposeExtensionServices(): void;
     getExtensionInfoById(extensionId: string): Extension | undefined;
     getExternalExtensionConstructor(extensionId: string): Promise<unknown>;
-    getLoadedExtensionURLs(): Array<Record<string, string>>;
+    getLoadedExtensionURLs(): Record<string, string>;
     getReplaceableExtensionInfo(): Extension[];
     injectExtension(extensionId: string, extension: Extension): void;
     isBuiltinExtension(extensionId: string): boolean;

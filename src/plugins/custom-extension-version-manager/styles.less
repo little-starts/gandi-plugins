@@ -1,0 +1,264 @@
+.plugin {
+  position: relative;
+}
+
+.plugin-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  padding: 14px;
+  overflow: hidden;
+  color: var(--theme-text-primary);
+}
+
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.toolbar-row,
+.current-header,
+.list-header,
+.version-title-row,
+.version-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar-row {
+  width: 100%;
+}
+
+.field-label,
+.version-date,
+.extension-id,
+.version-changelog {
+  color: var(--theme-text-primary);
+  opacity: 0.68;
+  font-size: 12px;
+}
+
+.select {
+  width: 100%;
+  min-width: 0;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--theme-color-g300);
+  border-radius: 7px;
+  color: var(--theme-text-primary);
+  background: var(--theme-color-300);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.select:focus {
+  border-color: var(--gui-item-active);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--gui-item-active) 18%, transparent);
+}
+
+.current-card {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 12px;
+  border: 1px solid var(--theme-color-g300);
+  border-radius: 9px;
+  background: var(--theme-color-300);
+}
+
+.current-header {
+  justify-content: space-between;
+}
+
+.current-header > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.extension-id {
+  margin-top: 2px;
+}
+
+.url-text,
+.version-url {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--theme-text-primary);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.marketplace-link {
+  width: fit-content;
+  color: var(--gui-item-active);
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.marketplace-link:hover {
+  text-decoration: underline;
+}
+
+.version-changelog {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.primary-button,
+.secondary-button {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.primary-button {
+  color: #fff;
+  background: var(--gui-item-active);
+}
+
+.secondary-button {
+  color: var(--theme-text-primary);
+  background: var(--theme-color-300);
+  border-color: var(--theme-color-g300);
+}
+
+.primary-button:hover:not(:disabled),
+.secondary-button:hover:not(:disabled) {
+  filter: brightness(0.96);
+}
+
+.primary-button:disabled,
+.secondary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.list-header {
+  justify-content: space-between;
+  padding-top: 2px;
+}
+
+.list-header span {
+  min-width: 24px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  text-align: center;
+  font-size: 12px;
+  background: var(--gui-item-hover);
+}
+
+.version-list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.version-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px;
+  border: 1px solid var(--theme-color-g300);
+  border-radius: 9px;
+  background: var(--theme-color-300);
+}
+
+.version-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.version-title-row {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.current-badge,
+.release-tag {
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+}
+
+.current-badge {
+  color: #fff;
+  background: var(--gui-item-active);
+}
+
+.release-tag {
+  color: var(--theme-text-primary);
+  background: var(--gui-item-hover);
+}
+
+.version-changelog {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.version-actions {
+  flex-shrink: 0;
+}
+
+.empty,
+.error-state {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  padding: 24px;
+  color: var(--theme-text-primary);
+  text-align: center;
+  line-height: 1.6;
+}
+
+.empty {
+  opacity: 0.6;
+}
+
+.error-state {
+  flex-direction: column;
+  gap: 12px;
+  color: var(--theme-error-color);
+}
+
+@media (max-width: 640px) {
+  .version-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .version-actions {
+    justify-content: flex-end;
+  }
+}

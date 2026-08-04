@@ -16,6 +16,7 @@ import BetterSpriteMenu from "plugins/better-sprite-menu/manifest";
 import inspiro from "plugins/inspiro/manifest";
 import customCss from "src/plugins/custom-css/manifest";
 import extensionManager from "src/plugins/extension-manager/manifest";
+import customExtensionVersionManager from "src/plugins/custom-extension-version-manager/manifest";
 import voiceCooperation from "src/plugins/voice-cooperation/manifest";
 import blockSharing from "plugins/block-sharing/manifest";
 import costumePiskel from "src/plugins/costume-piskel/manifest";
@@ -46,6 +47,7 @@ export default {
   inspiro,
   "custom-css": customCss,
   "extension-manager": extensionManager,
+  "custom-extension-version-manager": customExtensionVersionManager,
   "voice-cooperation": voiceCooperation,
   "block-sharing": blockSharing,
   "costume-piskel": costumePiskel,

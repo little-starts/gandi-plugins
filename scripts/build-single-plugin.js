@@ -70,7 +70,8 @@ function buildPlugin(onComplete, noDevServer) {
   const pluginName = spinalToPascal(argv.name);
   const entryFilePath = `./src/plugins/${argv.name}/${wrapperFileName}`;
   const webpackConfig = {
-    mode: "development",
+    mode: noDevServer ? "production" : "development",
+    devtool: noDevServer ? false : undefined,
     entry: {
       [pluginName]: entryFilePath,
     },

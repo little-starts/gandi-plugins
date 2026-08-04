@@ -20,6 +20,10 @@ export default {
   inspiro: () => import(/* webpackChunkName: "plugin-inspiro" */ "src/plugins/inspiro"),
   "custom-css": () => import(/* webpackChunkName: "plugin-custom-css" */ "src/plugins/custom-css"),
   "extension-manager": () => import(/* webpackChunkName: "plugin-extension-manager" */ "src/plugins/extension-manager"),
+  "custom-extension-version-manager": () =>
+    import(
+      /* webpackChunkName: "plugin-custom-extension-version-manager" */ "src/plugins/custom-extension-version-manager"
+    ),
   "voice-cooperation": () => import(/* webpackChunkName: "plugin-voice-cooperation" */ "src/plugins/voice-cooperation"),
   "block-sharing": () => import(/* webpackChunkName: "plugin-block-sharing" */ "plugins/block-sharing"),
   "costume-piskel": () => import(/* webpackChunkName: "plugin-costume-piskel" */ "src/plugins/costume-piskel"),
@@ -31,6 +35,7 @@ export default {
   "witcat-infinite-canvas": () =>
     import(/* webpackChunkName: "plugin-witcat-infinite-canvas" */ "src/plugins/witcat-infinite-canvas"),
   "find-definition": () => import(/* webpackChunkName: "plugin-find-definition" */ "src/plugins/find-definition"),
-  "editor-optimization": () => import(/* webpackChunkName: "plugin-editor-optimization" */ "src/plugins/editor-optimization"),
+  "editor-optimization": () =>
+    import(/* webpackChunkName: "plugin-editor-optimization" */ "src/plugins/editor-optimization"),
   "todo-list": () => import(/* webpackChunkName: "plugin-todo-list" */ "src/plugins/todo-list"),
 } as const;
