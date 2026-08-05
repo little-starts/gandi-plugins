@@ -1,0 +1,113 @@
+.consoleWindow {
+  height: 100%;
+  width: 100%;
+  overflow-y: scroll;
+  background-color: #2e3644;
+  font-family: monospace, Consolas, Monaco, "Courier New", Courier;
+}
+
+.w100-h100 {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.trash {
+  position: absolute;
+  top: 36px;
+  right: 10px;
+  background-color: transparent;
+  width: fit-content;
+  height: fit-content;
+}
+
+.logCount {
+  padding: 1px 6px;
+  border-radius: 9px;
+  height: 16px;
+  margin-top: auto;
+  margin-bottom: auto;
+  background-color: var(--theme-color-b100);
+  color: var(--theme-text-primary);
+  flex-shrink: 0;
+}
+
+.logContent {
+  flex-shrink: 0.4;
+  max-width: 100%;
+  flex: 1;
+}
+
+.logInnerBlockTip {
+  width: fit-content;
+  flex-shrink: 0.6;
+  margin-top: auto;
+  margin-bottom: auto;
+}
+
+.logInnerBlockTip > * {
+  width: fit-content;
+  border-radius: 8px;
+  height: 16px;
+  display: inline;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+.targetLink {
+  flex-shrink: 0;
+  margin-left: auto;
+  margin-top: auto;
+  margin-bottom: auto;
+  text-decoration: underline 1px;
+  cursor: pointer;
+  transition-duration: .1s;
+  :not(.transparent) & {
+    color: var(--theme-text-primary);
+  }
+  &:hover {
+    color: var(--theme-color-b100);
+  }
+}
+
+.logLine {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  border-radius: 0;
+  min-height: 16px;
+  width: 100%;
+  align-items: baseline;
+  border-bottom: solid var(--theme-color-g300) 1px;
+  white-space: pre;
+  position: relative;
+  line-height: 16px;
+}
+
+.logLine > * {
+  display: inline-block;
+  overflow-wrap: anywhere;
+  text-wrap-mode: wrap;
+}
+
+.targetTooltip {
+  display: inline;
+}
+
+.transparent {
+  background-color: transparent !important;
+}
+
+:root[theme="light"] .transparent .logContent:not(:has([style*="background"])) {
+  filter: brightness(0.7) saturate(0.8);
+}
+
+.emptyState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--theme-color-g400);
+  font-size: 13px;
+  user-select: none;
+}
