@@ -328,5 +328,7 @@
   "plugins.debuggerAddon.terminalLoadMode.d": "Виберіть спосіб завантаження розширення Gandi Console.",
   "plugins.debuggerAddon.terminalLoadMode.auto": "Завантажувати автоматично з проєктом",
   "plugins.debuggerAddon.terminalLoadMode.onClick": "Завантажувати по кліку на іконку",
-  "plugins.debuggerAddon.terminalLoadMode.manual": "Не завантажувати автоматично"
+  "plugins.debuggerAddon.terminalLoadMode.manual": "Не завантажувати автоматично",
+  "plugins.aiAssistant.title": "ШІ-асистент",
+  "plugins.aiAssistant.description": "ШІ-асистент, який допоможе вам програмувати та не тільки"
 }
