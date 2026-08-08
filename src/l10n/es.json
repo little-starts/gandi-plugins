@@ -330,5 +330,7 @@
   "plugins.debuggerAddon.terminalLoadMode.d": "Elija cómo se carga la extensión Gandi Console.",
   "plugins.debuggerAddon.terminalLoadMode.auto": "Cargar automáticamente con el proyecto",
   "plugins.debuggerAddon.terminalLoadMode.onClick": "Cargar al hacer clic en el icono",
-  "plugins.debuggerAddon.terminalLoadMode.manual": "No cargar automáticamente"
+  "plugins.debuggerAddon.terminalLoadMode.manual": "No cargar automáticamente",
+  "plugins.aiAssistant.title": "Asistente de IA",
+  "plugins.aiAssistant.description": "Asistente de IA para ayudarte a programar y más"
 }

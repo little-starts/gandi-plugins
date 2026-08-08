@@ -1,3 +1,4 @@
+import aiAssistant from "src/plugins/ai-assistant/manifest";
 import folder from "src/plugins/folder/manifest";
 import codeFind from "src/plugins/code-find/manifest";
 import codeFilter from "src/plugins/code-filter/manifest";
@@ -29,6 +30,7 @@ import todoList from "src/plugins/todo-list/manifest";
 import debuggerAddon from "src/plugins/debugger-addon/manifest";
 
 export default {
+  "ai-assistant": aiAssistant,
   folder,
   "code-find": codeFind,
   "code-filter": codeFilter,

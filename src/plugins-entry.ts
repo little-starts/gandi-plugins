@@ -1,5 +1,6 @@
 /* eslint-disable prettier/prettier */
 export default {
+  "ai-assistant": () => import(/* webpackChunkName: "plugin-ai-assistant" */ "src/plugins/ai-assistant"),
   folder: () => import(/* webpackChunkName: "plugin-folder" */ "src/plugins/folder"),
   "code-find": () => import(/* webpackChunkName: "plugin-code-find" */ "src/plugins/code-find"),
   "code-filter": () => import(/* webpackChunkName: "plugin-code-filter" */ "src/plugins/code-filter"),

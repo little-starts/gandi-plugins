@@ -333,5 +333,7 @@
   "plugins.debuggerAddon.terminalLoadMode.d": "Pilih cara sambungan Gandi Console dimuatkan.",
   "plugins.debuggerAddon.terminalLoadMode.auto": "Muat secara automatik dengan projek",
   "plugins.debuggerAddon.terminalLoadMode.onClick": "Muat apabila ikon diklik",
-  "plugins.debuggerAddon.terminalLoadMode.manual": "Jangan muat secara automatik"
+  "plugins.debuggerAddon.terminalLoadMode.manual": "Jangan muat secara automatik",
+  "plugins.aiAssistant.title": "Pembantu AI",
+  "plugins.aiAssistant.description": "Pembantu AI untuk membantu anda mengekod dan banyak lagi"
 }
